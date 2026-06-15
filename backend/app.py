@@ -1,9 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-from agents.intake import build_initial_state
+from agents.approval import apply_decision
 from core.provider_config import load_provider_config
+from core.state_store import get_state, reset_state
 
-app = FastAPI(title="BandGate API", version="0.1.0")
+app = FastAPI(title="BandGate API", version="0.2.0")
+
+
+class DecisionRequest(BaseModel):
+    decision: str
+    approver_role: str
+    approver_name: str | None = None
+    comment: str | None = None
+    final_answer: str | None = None
 
 
 @app.get("/health")
@@ -13,7 +23,7 @@ def health() -> dict[str, str]:
 
 @app.get("/state")
 def state() -> dict:
-    return build_initial_state().model_dump(mode="json")
+    return get_state().model_dump(mode="json")
 
 
 @app.get("/providers")
@@ -29,3 +39,28 @@ def providers() -> dict[str, str | bool | None]:
         "thenvoi_rest_url": config.thenvoi_rest_url,
         "thenvoi_ws_url": config.thenvoi_ws_url,
     }
+
+
+@app.post("/questions/{question_id}/decision")
+def decide(question_id: str, body: DecisionRequest) -> dict:
+    try:
+        question = apply_decision(
+            get_state(),
+            question_id,
+            body.decision,
+            approver_role=body.approver_role,
+            approver_name=body.approver_name,
+            comment=body.comment,
+            final_answer=body.final_answer,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown question")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return question.model_dump(mode="json")
+
+
+@app.post("/demo/reset")
+def reset() -> dict:
+    state = reset_state()
+    return {"status": "reset", "questions": len(state.questions)}
