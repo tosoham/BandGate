@@ -216,13 +216,42 @@ state canonical, so a flaky API never breaks the run. Configure keys in `.env`:
 
 | Variable | Used by | Purpose |
 |---|---|---|
-| `BAND_API_KEY` | Band client | Post room events: assignments, agent outputs, policy blocks, adversarial findings, approvals. |
 | `FEATHERLESS_API_KEY` | Adversarial reviewer | Independent red-team / hallucination scoring. |
 | `AIML_API_KEY` | Intake + drafting + policy | Structured extraction and structured policy decisions. |
+| `BAND_MODE` | Band client | `mock`, `lite`, or `live`; use `lite` while SDK/API quota is constrained. |
+| `FEATHERLESS_MODE` | Adversarial reviewer | `mock`, `lite`, or `live`; use `lite` for the free trial tier. |
+| `AIML_MODE` | Intake + drafting + policy | `mock`, `lite`, or `live`; use `lite` for the free tier. |
+| `THENVOI_REST_URL` | Band SDK | REST base URL, default `https://app.band.ai/`. |
+| `THENVOI_WS_URL` | Band SDK | WebSocket URL, default `wss://app.band.ai/api/v1/socket/websocket`. |
+| `BAND_DEFAULT_ROOM_ID` | Band SDK | Optional existing room ID for demo routing. |
 | `DEMO_MODE` | All providers | `mock` runs fully offline with deterministic fallbacks; set to live mode to exercise real provider calls. |
 
 > Each provider has a mocked fallback path, but the demo keeps at least one visibly successful
 > live call.
+
+For the current free/lite provider situation, keep `DEMO_MODE=mock` for rehearsals and set only
+the provider you are actively demonstrating to `lite`. Lite mode must use the smallest useful
+payloads, cache/reuse outputs where possible, and fall back to deterministic local guardrails if
+quota or rate limits fail.
+
+### Band SDK setup
+
+Band uses the `band-sdk` package and the `thenvoi` Python module. The SDK connects Remote
+Agents to Band over REST + WebSocket. Each running agent needs credentials from the Band
+platform:
+
+1. In Band, create one **Remote Agent** for each BandGate role you want visible: Intake, Sales,
+   Security, Product, Legal Guard, and Adversarial Reviewer.
+2. Copy each Remote Agent's **Agent UUID** and one-time **API key** into `agent_config.yaml`.
+   Start from `agent_config.yaml.example`; do not commit the real file.
+3. Rooms are for collaboration and routing. A room does not issue every agent's credentials;
+   each Remote Agent has its own UUID/API key and joins or is added to rooms through the SDK's
+   room/participant tools.
+4. The SDK exposes tools such as `thenvoi_send_message`, `thenvoi_send_event`,
+   `thenvoi_add_participant`, `thenvoi_get_participants`, and `thenvoi_create_chatroom`.
+
+The backend `BandClient` adapter records the same event payloads in `mock`/`lite` mode. Live
+mode should run the six Remote Agents with `band-sdk` once `agent_config.yaml` is filled.
 
 ---
 
@@ -301,6 +330,7 @@ npm run build
 |---|---|---|
 | `GET` | `/health` | Liveness probe — `{"status": "ok", "service": "bandgate-backend"}`. |
 | `GET` | `/state` | Full `BandGateState` as JSON (built from the sample questionnaire). |
+| `GET` | `/providers` | Current provider modes and whether each key/package is configured. |
 
 The frontend's `page.tsx` reads `${BACKEND_URL}/state` and gracefully falls back to
 `lib/mockState.ts` if the backend is unreachable.

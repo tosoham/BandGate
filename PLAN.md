@@ -638,13 +638,13 @@ The work is sliced by feature rather than by layer, so **both developers write b
 
 **Ishita — Answer half**
 
-- Backend: integrate AI/ML API for structured intake / draft (with mocked fallback).
+- Backend: integrate AI/ML API for structured intake / draft with `mock` and `lite` modes; use the free tier only for the smallest visible call.
 - Frontend: loading/error states for provider-backed steps; the prompt-injection demo question in the queue.
 
 **Soham — Gate half**
 
-- Backend: Featherless adversarial reviewer (prompt-injection, unsupported-claim, contradiction, hallucination scoring) with mocked fallback.
-- Backend: Band client wrapper posting room events (assignments, agent outputs, policy blocks, adversarial review, approval).
+- Backend: Featherless adversarial reviewer with `mock` and `lite` modes for prompt-injection, unsupported-claim, contradiction, and hallucination scoring.
+- Backend: Band SDK integration using `band-sdk` / `thenvoi`; create Remote Agents in Band, store each role's Agent UUID/API key in `agent_config.yaml`, and use rooms for collaboration/routing.
 - Frontend: Band event timeline, adversarial review panel, and a demo reset button.
 
 **Integration gate:** Band room shows the SLA conflict from assignment through policy block and approval request.

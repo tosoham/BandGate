@@ -1,0 +1,26 @@
+# Copy to agent_config.yaml and fill values from Band's Remote Agent setup.
+# Do not commit the real agent_config.yaml file.
+
+intake_agent:
+  agent_id: "<band-agent-uuid>"
+  api_key: "<band-agent-api-key>"
+
+sales_engineer:
+  agent_id: "<band-agent-uuid>"
+  api_key: "<band-agent-api-key>"
+
+security_compliance:
+  agent_id: "<band-agent-uuid>"
+  api_key: "<band-agent-api-key>"
+
+product_capability:
+  agent_id: "<band-agent-uuid>"
+  api_key: "<band-agent-api-key>"
+
+legal_commitment_guard:
+  agent_id: "<band-agent-uuid>"
+  api_key: "<band-agent-api-key>"
+
+adversarial_reviewer:
+  agent_id: "<band-agent-uuid>"
+  api_key: "<band-agent-api-key>"

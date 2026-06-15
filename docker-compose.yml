@@ -5,9 +5,14 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       AIML_API_KEY: ${AIML_API_KEY:-}
-      BAND_API_KEY: ${BAND_API_KEY:-}
+      AIML_MODE: ${AIML_MODE:-mock}
+      BAND_MODE: ${BAND_MODE:-mock}
+      BAND_DEFAULT_ROOM_ID: ${BAND_DEFAULT_ROOM_ID:-}
       DEMO_MODE: ${DEMO_MODE:-mock}
       FEATHERLESS_API_KEY: ${FEATHERLESS_API_KEY:-}
+      FEATHERLESS_MODE: ${FEATHERLESS_MODE:-mock}
+      THENVOI_REST_URL: ${THENVOI_REST_URL:-https://app.band.ai/}
+      THENVOI_WS_URL: ${THENVOI_WS_URL:-wss://app.band.ai/api/v1/socket/websocket}
     ports:
       - "8000:8000"
     volumes:

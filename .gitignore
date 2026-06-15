@@ -226,5 +226,8 @@ output/*.json
 output/*.md
 output/*.pdf
 
+# Band SDK credentials
+agent_config.yaml
+
 # Streamlit
 .streamlit/secrets.toml
