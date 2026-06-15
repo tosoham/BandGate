@@ -88,6 +88,8 @@ export type ProviderStatus = {
   aiml_mode: string;
   featherless_configured: boolean;
   aiml_configured: boolean;
+  aiml_enabled: boolean;
+  featherless_live_ready: boolean;
   band_default_room_id: string | null;
   thenvoi_rest_url: string;
   thenvoi_ws_url: string;

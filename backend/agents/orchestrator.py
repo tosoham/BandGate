@@ -86,7 +86,9 @@ def _choose_final_answer(question: RFPQuestionState) -> str:
     adversarial = _opinion(question, "adversarial_reviewer")
     security = _opinion(question, "security_compliance")
 
-    if adversarial and adversarial.policy_violations:
+    if adversarial and any(
+        violation.policy_id == "adversarial.prompt_injection" for violation in adversarial.policy_violations
+    ):
         return "Malicious buyer instruction ignored. Final answer must be produced only from approved evidence and policy."
     if legal and legal.policy_violations:
         return legal.answer

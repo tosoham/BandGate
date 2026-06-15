@@ -38,6 +38,10 @@ def providers() -> dict[str, str | bool | None]:
         "aiml_mode": config.aiml_mode,
         "featherless_configured": bool(config.featherless_api_key),
         "aiml_configured": bool(config.aiml_api_key),
+        "aiml_enabled": config.aiml_enabled,
+        "featherless_live_ready": bool(
+            config.featherless_api_key and config.featherless_base_url and config.featherless_model
+        ),
         "band_default_room_id": config.band_default_room_id,
         "thenvoi_rest_url": config.thenvoi_rest_url,
         "thenvoi_ws_url": config.thenvoi_ws_url,

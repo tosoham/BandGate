@@ -22,6 +22,9 @@ class ProviderConfig:
     band_default_room_id: str | None
     thenvoi_rest_url: str
     thenvoi_ws_url: str
+    aiml_enabled: bool = False
+    featherless_base_url: str | None = None
+    featherless_model: str | None = None
 
 
 def load_provider_config() -> ProviderConfig:
@@ -34,4 +37,7 @@ def load_provider_config() -> ProviderConfig:
         band_default_room_id=os.getenv("BAND_DEFAULT_ROOM_ID") or None,
         thenvoi_rest_url=os.getenv("THENVOI_REST_URL", "https://app.band.ai/"),
         thenvoi_ws_url=os.getenv("THENVOI_WS_URL", "wss://app.band.ai/api/v1/socket/websocket"),
+        aiml_enabled=os.getenv("AIML_ENABLED", "false").lower() == "true",
+        featherless_base_url=os.getenv("FEATHERLESS_BASE_URL") or None,
+        featherless_model=os.getenv("FEATHERLESS_MODEL") or None,
     )

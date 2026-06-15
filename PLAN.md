@@ -636,6 +636,10 @@ The work is sliced by feature rather than by layer, so **both developers write b
 
 **Goal:** Make the workflow visible as a Band of Agents project.
 
+**Current constraint:** AI/ML API credits are not available yet, so AI/ML remains a visible but
+hard-disabled integration unless `AIML_ENABLED=true` is set explicitly. Day 3 live-provider work
+uses deterministic/lite mode by default, with Featherless as the allowed optional live path.
+
 **Ishita — Answer half**
 
 - Backend: integrate AI/ML API for structured intake / draft with `mock` and `lite` modes; use the free tier only for the smallest visible call.

@@ -5,11 +5,14 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       AIML_API_KEY: ${AIML_API_KEY:-}
+      AIML_ENABLED: ${AIML_ENABLED:-false}
       AIML_MODE: ${AIML_MODE:-mock}
       BAND_MODE: ${BAND_MODE:-mock}
       BAND_DEFAULT_ROOM_ID: ${BAND_DEFAULT_ROOM_ID:-}
       DEMO_MODE: ${DEMO_MODE:-mock}
       FEATHERLESS_API_KEY: ${FEATHERLESS_API_KEY:-}
+      FEATHERLESS_BASE_URL: ${FEATHERLESS_BASE_URL:-}
+      FEATHERLESS_MODEL: ${FEATHERLESS_MODEL:-}
       FEATHERLESS_MODE: ${FEATHERLESS_MODE:-mock}
       THENVOI_REST_URL: ${THENVOI_REST_URL:-https://app.band.ai/}
       THENVOI_WS_URL: ${THENVOI_WS_URL:-wss://app.band.ai/api/v1/socket/websocket}
@@ -33,3 +36,25 @@ services:
     depends_on:
       - backend
     command: npm run dev -- --hostname 0.0.0.0
+
+  band-service:
+    profiles: ["band"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      AIML_ENABLED: ${AIML_ENABLED:-false}
+      BAND_MODE: ${BAND_MODE:-mock}
+      BAND_DEFAULT_ROOM_ID: ${BAND_DEFAULT_ROOM_ID:-}
+      BAND_SERVICE_LIVE: ${BAND_SERVICE_LIVE:-false}
+      BAND_SERVICE_HEARTBEAT_SECONDS: ${BAND_SERVICE_HEARTBEAT_SECONDS:-30}
+      FEATHERLESS_API_KEY: ${FEATHERLESS_API_KEY:-}
+      FEATHERLESS_BASE_URL: ${FEATHERLESS_BASE_URL:-}
+      FEATHERLESS_MODEL: ${FEATHERLESS_MODEL:-}
+      FEATHERLESS_MODE: ${FEATHERLESS_MODE:-mock}
+      THENVOI_REST_URL: ${THENVOI_REST_URL:-https://app.band.ai/}
+      THENVOI_WS_URL: ${THENVOI_WS_URL:-wss://app.band.ai/api/v1/socket/websocket}
+    volumes:
+      - ./agent_config.yaml:/app/agent_config.yaml:ro
+      - ./output:/app/output
+    command: python scripts/run_band_service.py

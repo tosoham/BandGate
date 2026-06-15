@@ -122,7 +122,7 @@ first (reliable for the demo), then upgraded to model calls where they add value
 | **Sales Engineer** | Drafts buyer-friendly, optimistic answers. May include assumptions. Never finalizes commitments. |
 | **Security & Compliance RAG** | Answers only from approved security/compliance evidence (SOC 2, ISO 27001, FedRAMP, encryption, incident response, access control, vuln management, retention, subprocessors). Every answer carries citations or is marked unsupported. |
 | **Product Capability** | Distinguishes *generally available* vs *architecturally possible* vs *roadmap only* vs *requires custom scoping* vs *contractually approved*. |
-| **Legal / Commitment Guard** | Enforces what the company may promise: SLA limits, liability caps, indemnity, DPA/residency language, NDA requirements, AI-training commitments, and human-approval routing. Deterministic rules backed by AI/ML API. |
+| **Legal / Commitment Guard** | Enforces what the company may promise: SLA limits, liability caps, indemnity, DPA/residency language, NDA requirements, AI-training commitments, and human-approval routing. Deterministic rules with an opt-in provider path. |
 | **Featherless Adversarial Reviewer** | Independent red team: prompt-injection detection, unsupported-claim detection, cross-answer contradiction detection, sensitive-disclosure detection, hallucination risk scoring. **The model that drafts the answer does not approve itself.** |
 | **Human Approval Gate** | Required for high-risk commitments. Approve · approve with edits · escalate to Legal/Security · mark unsupported · reject. Human approval is a feature, not a weakness. |
 
@@ -217,7 +217,10 @@ state canonical, so a flaky API never breaks the run. Configure keys in `.env`:
 | Variable | Used by | Purpose |
 |---|---|---|
 | `FEATHERLESS_API_KEY` | Adversarial reviewer | Independent red-team / hallucination scoring. |
-| `AIML_API_KEY` | Intake + drafting + policy | Structured extraction and structured policy decisions. |
+| `FEATHERLESS_BASE_URL` | Adversarial reviewer | OpenAI-compatible Featherless endpoint for live mode. |
+| `FEATHERLESS_MODEL` | Adversarial reviewer | Featherless model name for live mode. |
+| `AIML_API_KEY` | Intake + drafting + policy | Structured extraction and structured policy decisions, currently disabled by default. |
+| `AIML_ENABLED` | Intake + drafting + policy | Must be `true` before AI/ML API calls are allowed; keep `false` until credits are available. |
 | `BAND_MODE` | Band client | `mock`, `lite`, or `live`; use `lite` while SDK/API quota is constrained. |
 | `FEATHERLESS_MODE` | Adversarial reviewer | `mock`, `lite`, or `live`; use `lite` for the free trial tier. |
 | `AIML_MODE` | Intake + drafting + policy | `mock`, `lite`, or `live`; use `lite` for the free tier. |
@@ -226,13 +229,13 @@ state canonical, so a flaky API never breaks the run. Configure keys in `.env`:
 | `BAND_DEFAULT_ROOM_ID` | Band SDK | Optional existing room ID for demo routing. |
 | `DEMO_MODE` | All providers | `mock` runs fully offline with deterministic fallbacks; set to live mode to exercise real provider calls. |
 
-> Each provider has a mocked fallback path, but the demo keeps at least one visibly successful
-> live call.
+> AI/ML is intentionally hard-disabled unless `AIML_ENABLED=true`. A key in `.env` is not enough
+> to trigger calls.
 
-For the current free/lite provider situation, keep `DEMO_MODE=mock` for rehearsals and set only
-the provider you are actively demonstrating to `lite`. Lite mode must use the smallest useful
-payloads, cache/reuse outputs where possible, and fall back to deterministic local guardrails if
-quota or rate limits fail.
+For the current free/lite provider situation, keep `DEMO_MODE=mock` for rehearsals, keep
+`AIML_ENABLED=false`, and set only the provider you are actively demonstrating to `lite` or
+`live`. Lite mode uses deterministic local guardrails and provider-shaped metadata; live mode
+falls back if quota or rate limits fail.
 
 ### Band SDK setup
 
@@ -251,7 +254,9 @@ platform:
    `thenvoi_add_participant`, `thenvoi_get_participants`, and `thenvoi_create_chatroom`.
 
 The backend `BandClient` adapter records the same event payloads in `mock`/`lite` mode. Live
-mode should run the six Remote Agents with `band-sdk` once `agent_config.yaml` is filled.
+mode should run the six Remote Agents with `band-sdk[langgraph]` once `agent_config.yaml` and an
+approved LLM adapter are filled. The official SDK docs describe `Agent.create(...)` plus
+`await agent.run()` as the point where the WebSocket subscriptions stay active.
 
 ---
 
@@ -284,6 +289,9 @@ docker compose run backend pytest
 
 # Validate local Band agent credentials without making live WebSocket calls
 docker compose run --rm -v ./agent_config.yaml:/app/agent_config.yaml:ro backend python scripts/verify_band_agents.py
+
+# Optional: keep the Band lite/mock event stream service running
+docker compose --profile band up band-service
 ```
 
 ---

@@ -30,8 +30,21 @@ async def verify_live_connection(agent_name: str) -> None:
         ) from exc
 
     agent_id, api_key = load_agent_config(agent_name)
+    featherless_base_url = os.getenv("FEATHERLESS_BASE_URL")
+    featherless_model = os.getenv("BAND_VERIFY_MODEL") or os.getenv("FEATHERLESS_MODEL")
+    featherless_api_key = os.getenv("FEATHERLESS_API_KEY")
+    if not (featherless_base_url and featherless_model and featherless_api_key):
+        raise SystemExit(
+            "Live Band verification needs a live LLM adapter. AI/ML is disabled for this demo; "
+            "set FEATHERLESS_BASE_URL, FEATHERLESS_MODEL, and FEATHERLESS_API_KEY to use Featherless."
+        )
+
     adapter = LangGraphAdapter(
-        llm=ChatOpenAI(model=os.getenv("BAND_VERIFY_MODEL", "gpt-4o-mini")),
+        llm=ChatOpenAI(
+            model=featherless_model,
+            api_key=featherless_api_key,
+            base_url=featherless_base_url,
+        ),
         checkpointer=InMemorySaver(),
         custom_section=f"You are the BandGate {agent_name.replace('_', ' ')}.",
     )
