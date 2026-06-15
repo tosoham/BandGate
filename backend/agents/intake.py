@@ -1,4 +1,7 @@
+from agents.answer_pipeline import run_answer_pipeline
 from core.conflict import evaluate_question
+from core.injection import scan_text
+from core.model_clients import normalize_question, provider_mode
 from core.rfp_parser import load_questions
 from core.schemas import BandGateState, RFPQuestionState
 
@@ -7,11 +10,26 @@ def build_initial_state() -> BandGateState:
     questions: dict[str, RFPQuestionState] = {}
 
     for row in load_questions("data/sample_questionnaire.csv"):
+        # The RFP is untrusted input: scan raw buyer text before anything
+        # downstream can treat it as an instruction.
+        injection = scan_text(row.question)
+        if injection.detected:
+            print(
+                f"[intake] prompt-injection detected in {row.question_id}: "
+                f"{injection.matched_patterns}"
+            )
+
+        # Structured intake: prefer an AI/ML-normalized restatement, but only for
+        # text that is not a detected injection. Falls back to a trimmed string.
+        normalized = None
+        if not injection.detected:
+            normalized = normalize_question(row.question)
+
         evaluation = evaluate_question(row.question, row.category)
         questions[row.question_id] = RFPQuestionState(
             question_id=row.question_id,
             raw_question=row.question,
-            normalized_question=row.question.strip(),
+            normalized_question=normalized or row.question.strip(),
             category=[part.strip() for part in row.category.split("|") if part.strip()],
             risk_level=evaluation.risk_level,
             assigned_agents=evaluation.assigned_agents,
@@ -26,6 +44,12 @@ def build_initial_state() -> BandGateState:
         buyer_name="Public Sector Cybersecurity Review Board",
         vendor_name="SentinelAI Security Platform",
         policy_version="2026.06",
+        provider_mode=provider_mode(),
         questions=questions,
         global_risk_score=0.0,
     )
+
+
+def build_state() -> BandGateState:
+    """Intake plus the answer-half pipeline: questions with agent opinions."""
+    return run_answer_pipeline(build_initial_state())

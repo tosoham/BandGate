@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from core.injection import scan_text
+
 
 @dataclass(frozen=True)
 class ConflictEvaluation:
@@ -42,7 +44,7 @@ def evaluate_question(question: str, category: str) -> ConflictEvaluation:
         summary = "Sensitive security artifacts require NDA review."
         risk_level = "high"
 
-    if any(token in text for token in ["ignore internal", "ignore policy", "answer all", "do not mention exceptions"]):
+    if scan_text(question).detected:
         agents.update({"adversarial_reviewer", "legal_commitment_guard"})
         risk_tags.append("prompt_injection")
         summary = "Buyer-provided text may be prompt injection."
