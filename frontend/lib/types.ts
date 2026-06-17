@@ -1,5 +1,31 @@
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
+export type QuestionStatus =
+  | "open"
+  | "drafting"
+  | "evidence_review"
+  | "policy_review"
+  | "adversarial_review"
+  | "human_review"
+  | "approved"
+  | "finalized";
+
+export type AdversarialCategory =
+  | "prompt_injection"
+  | "unsupported_claim"
+  | "contradiction"
+  | "sensitive_disclosure"
+  | "hallucination";
+
+export type AdversarialFinding = {
+  finding_id: string;
+  category: AdversarialCategory;
+  severity: RiskLevel;
+  claim: string;
+  detail: string;
+  hallucination_score?: number;
+};
+
 export type RFPQuestionState = {
   question_id: string;
   raw_question: string;
@@ -14,6 +40,7 @@ export type RFPQuestionState = {
   status: string;
   approvals: Approval[];
   risk_tags: string[];
+  adversarial_findings?: AdversarialFinding[];
 };
 
 export type BandGateState = {
@@ -25,6 +52,7 @@ export type BandGateState = {
   promise_ledger: PromiseLedgerEntry[];
   audit_trail: AuditEvent[];
   global_risk_score: number;
+  provider_mode?: string;
 };
 
 export type Evidence = {

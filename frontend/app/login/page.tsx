@@ -26,7 +26,7 @@ export default function LoginPage() {
         setPending(false);
         return;
       }
-      router.push("/intake");
+      router.push("/");
       router.refresh();
     } catch {
       setError("network error");

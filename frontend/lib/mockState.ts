@@ -6,6 +6,7 @@ export const mockState: BandGateState = {
   vendor_name: "SentinelAI Security Platform",
   policy_version: "2026.06",
   global_risk_score: 0,
+  provider_mode: "mock",
   promise_ledger: [
     {
       commitment_id: "COM-001",

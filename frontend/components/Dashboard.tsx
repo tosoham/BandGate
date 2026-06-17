@@ -1,0 +1,679 @@
+"use client";
+
+import { useState } from "react";
+import Icon, { type IconName } from "./Icon";
+import { type Decision } from "./ApprovalControls";
+import BandTimeline from "./BandTimeline";
+import BandRoom from "./BandRoom";
+import RiskDashboard from "./RiskDashboard";
+import ExportBar from "./ExportBar";
+import DemoReset from "./DemoReset";
+import PolicyDecisionPanel from "./PolicyDecisionPanel";
+import AdversarialReviewPanel from "./AdversarialReviewPanel";
+import PromiseLedger from "./PromiseLedger";
+import LiveRoomPanel from "./LiveRoomPanel";
+import type {
+  AgentOpinion,
+  BandEventRecord,
+  BandGateState,
+  QuestionStatus,
+  RFPQuestionState,
+  Evidence,
+} from "../lib/types";
+
+type StateSource = "live" | "fallback" | "demo";
+type View = "overview" | "triage" | "review" | "bandroom" | "risk" | "ledger" | "exports";
+type SubTab = "agents" | "evidence" | "policy" | "adversarial" | "band" | "liveroom";
+
+const RISK_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+const RISK_WEIGHT: Record<string, number> = { critical: 1, high: 0.7, medium: 0.4, low: 0.15 };
+
+function postureBand(score: number): { tag: string; color: string } {
+  if (score >= 67) return { tag: "Elevated", color: "var(--r-high)" };
+  if (score >= 34) return { tag: "Guarded", color: "var(--r-medium)" };
+  return { tag: "Contained", color: "var(--r-low)" };
+}
+
+const AGENT_CODE: Record<string, string> = {
+  sales_engineer: "SE",
+  security_compliance: "SC",
+  product_capability: "PC",
+  legal_commitment_guard: "LG",
+  adversarial_reviewer: "AR",
+};
+
+function agentCode(name: string) {
+  return AGENT_CODE[name] ?? name.slice(0, 2).toUpperCase();
+}
+
+function agentLabel(name: string) {
+  return name.replaceAll("_", " ");
+}
+
+function riskClass(risk: string) {
+  return `risk risk-${risk}`;
+}
+
+function statusLabel(question: RFPQuestionState) {
+  if (question.risk_tags.includes("prompt_injection")) return "Attack detected";
+  if (question.conflict_detected) return "Needs review";
+  return "Ready";
+}
+
+function statusKind(question: RFPQuestionState) {
+  if (question.risk_tags.includes("prompt_injection")) return "attack";
+  if (question.conflict_detected) return "review";
+  return "ok";
+}
+
+function confidencePct(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+type AnswerState = { label: string; kind: "attack" | "conflict" | "ok"; detail: string; icon: IconName };
+
+function answerState(question: RFPQuestionState): AnswerState {
+  if (question.risk_tags.includes("prompt_injection")) {
+    return {
+      label: "Prompt injection blocked",
+      kind: "attack",
+      icon: "block",
+      detail: "Buyer text tried to override internal policy and was quarantined as untrusted input.",
+    };
+  }
+  if (question.conflict_detected) {
+    return {
+      label: "Conflict — policy review",
+      kind: "conflict",
+      icon: "alert",
+      detail:
+        question.conflict_summary ??
+        "The optimistic draft conflicts with approved evidence and must be reviewed before finalization.",
+    };
+  }
+  return {
+    label: "Evidence-backed draft",
+    kind: "ok",
+    icon: "approve",
+    detail: "The draft is supported by retrieved evidence and is ready for policy sign-off.",
+  };
+}
+
+function dedupeEvidence(opinions: AgentOpinion[]): Evidence[] {
+  const seen = new Set<string>();
+  const all: Evidence[] = [];
+  for (const opinion of opinions) {
+    for (const evidence of opinion.evidence) {
+      if (!seen.has(evidence.chunk_id)) {
+        seen.add(evidence.chunk_id);
+        all.push(evidence);
+      }
+    }
+  }
+  return all.sort((a, b) => b.confidence - a.confidence);
+}
+
+function recommendedAnswer(question: RFPQuestionState): string {
+  const evidenceBacked = question.opinions.find(
+    (opinion) => opinion.risk_tags.includes("supported_by_evidence") && opinion.evidence.length > 0,
+  );
+  return evidenceBacked?.answer ?? question.opinions[0]?.answer ?? "";
+}
+
+function ShieldMark() {
+  return <Icon name="shield" size={22} />;
+}
+
+function NavItem({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: IconName;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className={`navItem${active ? " navActive" : ""}`} onClick={onClick} aria-current={active}>
+      <span className="navIcon">
+        <Icon name={icon} size={17} />
+      </span>
+      <span className="navLabel">{label}</span>
+    </button>
+  );
+}
+
+function QueueRow({
+  question,
+  selected,
+  compact,
+  onClick,
+}: {
+  question: RFPQuestionState;
+  selected: boolean;
+  compact?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`questionRow${compact ? " compact" : ""}${selected ? " isSelected" : ""}`}
+      onClick={onClick}
+      aria-pressed={selected}
+    >
+      <div className="qrMain">
+        <div className="qrTop">
+          <span className="questionId">{question.question_id}</span>
+          <span className={riskClass(question.risk_level)}>{question.risk_level}</span>
+        </div>
+        <h3>{question.raw_question}</h3>
+        <div className="qrBottom">
+          <span className={`status status-${statusKind(question)}`}>
+            <span className="dot" />
+            {statusLabel(question)}
+          </span>
+          {!compact &&
+            question.category.slice(0, 2).map((cat) => (
+              <span className="chip" key={cat}>
+                {cat.replaceAll("_", " ")}
+              </span>
+            ))}
+        </div>
+      </div>
+      {!compact && (
+        <span className="qrArrow" aria-hidden>
+          <Icon name="chevron" size={18} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function OpinionCard({ opinion }: { opinion: AgentOpinion }) {
+  return (
+    <li className="tlItem">
+      <span className="avatar" aria-hidden>
+        {agentCode(opinion.agent_name)}
+      </span>
+      <article className="opinion">
+        <div className="opinionHead">
+          <span className="opinionAgent">{agentLabel(opinion.agent_name)}</span>
+          <span className={`sourceTag source-${opinion.provider === "aiml" ? "aiml" : "local"}`}>
+            {opinion.provider === "aiml" ? "AI/ML API" : "deterministic"}
+          </span>
+        </div>
+        <p className="opinionAnswer">{opinion.answer}</p>
+        <div className="opinionFoot">
+          <span className="confidence">
+            <span className="confidenceBar" aria-hidden>
+              <span style={{ width: confidencePct(opinion.confidence) }} />
+            </span>
+            <span className="confidenceVal">{confidencePct(opinion.confidence)}</span>
+          </span>
+          <span className="evidenceCount">
+            {opinion.evidence.length} citation{opinion.evidence.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {opinion.risk_tags.length > 0 && (
+          <div className="tagLine">
+            {opinion.risk_tags.map((tag) => (
+              <span key={tag}>{tag.replaceAll("_", " ")}</span>
+            ))}
+          </div>
+        )}
+      </article>
+    </li>
+  );
+}
+
+export default function Dashboard({
+  state,
+  source,
+  bandEvents = [],
+  bandReport = "",
+  publicBackendUrl = "",
+}: {
+  state: BandGateState;
+  source: StateSource;
+  bandEvents?: BandEventRecord[];
+  bandReport?: string;
+  publicBackendUrl?: string;
+}) {
+  const [byId, setById] = useState<Record<string, RFPQuestionState>>(state.questions);
+  const [view, setView] = useState<View>("overview");
+  const [subTab, setSubTab] = useState<SubTab>("agents");
+
+  const questions = Object.values(byId).sort(
+    (a, b) => (RISK_ORDER[a.risk_level] ?? 9) - (RISK_ORDER[b.risk_level] ?? 9),
+  );
+
+  const defaultId =
+    questions.find((question) => question.risk_tags.includes("sla_overcommitment"))?.question_id ??
+    questions[0]?.question_id;
+  const [selectedId, setSelectedId] = useState(defaultId);
+
+  const selected = questions.find((question) => question.question_id === selectedId) ?? questions[0];
+
+  function openReview(id: string) {
+    setSelectedId(id);
+    setSubTab("agents");
+    setView("review");
+  }
+
+  async function decide(decision: Decision, role: string, finalAnswer?: string) {
+    const current = byId[selected.question_id];
+    if (!current) return;
+
+    const nextFinal =
+      decision === "rejected"
+        ? null
+        : finalAnswer ?? (decision === "approved" ? recommendedAnswer(current) : current.final_answer);
+    const status: QuestionStatus =
+      decision === "approved" || decision === "approved_with_edits" ? "approved" : "human_review";
+
+    const updated: RFPQuestionState = {
+      ...current,
+      status,
+      final_answer: nextFinal,
+      approvals: [
+        ...current.approvals,
+        {
+          approver_role: role,
+          approver_name: null,
+          decision,
+          comment: null,
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    };
+    setById({ ...byId, [current.question_id]: updated });
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (backendUrl) {
+      try {
+        await fetch(`${backendUrl}/questions/${current.question_id}/decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision, approver_role: role, final_answer: nextFinal }),
+        });
+      } catch {
+        /* ignore — local state already reflects the decision */
+      }
+    }
+  }
+
+  const total = questions.length;
+  const highRisk = questions.filter((q) => q.risk_level === "high").length;
+  const criticalRisk = questions.filter((q) => q.risk_level === "critical").length;
+  const blocked = questions.filter((q) => q.conflict_detected).length;
+  const finalized = questions.filter((q) => q.status === "approved" || q.status === "finalized").length;
+  const evidence = dedupeEvidence(selected.opinions);
+  const liveProvider = state.provider_mode !== "mock";
+  const stateInfo = answerState(selected);
+
+  const derivedRisk =
+    total > 0 ? questions.reduce((sum, q) => sum + (RISK_WEIGHT[q.risk_level] ?? 0), 0) / total : 0;
+  const rawScore = state.global_risk_score > 0 ? state.global_risk_score : derivedRisk;
+  const score = Math.round(rawScore <= 1 ? rawScore * 100 : rawScore);
+  const posture = postureBand(score);
+
+  const NAV_TOP: { id: View; label: string; icon: IconName }[] = [
+    { id: "overview", label: "Overview", icon: "home" },
+  ];
+  const NAV: { id: View; label: string; icon: IconName }[] = [
+    { id: "triage", label: "Triage", icon: "queue" },
+    { id: "review", label: "Review", icon: "review" },
+    { id: "bandroom", label: "Band Room", icon: "band" },
+  ];
+  const NAV_ANALYSIS: { id: View; label: string; icon: IconName }[] = [
+    { id: "risk", label: "Risk Dashboard", icon: "risk" },
+    { id: "ledger", label: "Promise Ledger", icon: "ledger" },
+    { id: "exports", label: "Exports", icon: "export" },
+  ];
+
+  const HEAD: Record<View, { eyebrow: string; title: string; subtitle: string }> = {
+    overview: {
+      eyebrow: "Band of Agents · Track 1",
+      title: "Overview",
+      subtitle: "Portfolio posture and entry point.",
+    },
+    triage: {
+      eyebrow: "Band of Agents · Track 1",
+      title: "Triage Queue",
+      subtitle: `${state.vendor_name} responding to ${state.buyer_name}`,
+    },
+    review: {
+      eyebrow: `${selected.question_id} · Review`,
+      title: "Question Review",
+      subtitle: "Draft, evidence, policy, adversarial check, and human sign-off.",
+    },
+    bandroom: {
+      eyebrow: "Band of Agents · Track 1",
+      title: "Band Room",
+      subtitle: "Live six-agent collaboration, policy blocks, drift control, and the chat report.",
+    },
+    risk: { eyebrow: "Portfolio", title: "Risk Dashboard", subtitle: "Exposure across the full questionnaire." },
+    ledger: {
+      eyebrow: "Delivery",
+      title: "Promise Ledger",
+      subtitle: "Every approved commitment becomes a delivery obligation.",
+    },
+    exports: { eyebrow: "Audit", title: "Exports", subtitle: "Final response, audit trail, and Promise Ledger." },
+  };
+
+  const subTabs: { id: SubTab; label: string; icon: IconName; count?: number }[] = [
+    { id: "agents", label: "Agents", icon: "agents", count: selected.opinions.length },
+    { id: "evidence", label: "Evidence", icon: "evidence", count: evidence.length },
+    { id: "policy", label: "Policy", icon: "policy" },
+    { id: "adversarial", label: "Adversarial", icon: "shield" },
+    { id: "band", label: "Band feed", icon: "band" },
+    { id: "liveroom", label: "Live Room", icon: "band" },
+  ];
+
+  const head = HEAD[view];
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brandMark">
+            <ShieldMark />
+          </span>
+          <div>
+            <span className="brandName">BandGate</span>
+            <span className="brandTag">Promise Gate</span>
+          </div>
+        </div>
+
+        <nav className="nav">
+          {NAV_TOP.map((item) => (
+            <NavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              active={view === item.id}
+              onClick={() => setView(item.id)}
+            />
+          ))}
+          <span className="navHeading">Workflow</span>
+          {NAV.map((item) => (
+            <NavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              active={view === item.id}
+              onClick={() => setView(item.id)}
+            />
+          ))}
+          <span className="navHeading">Analysis</span>
+          {NAV_ANALYSIS.map((item) => (
+            <NavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              active={view === item.id}
+              onClick={() => setView(item.id)}
+            />
+          ))}
+        </nav>
+
+        <div className="sidebarFoot">
+          <span className={`providerPill ${liveProvider ? "provider-live" : "provider-mock"}`}>
+            <span className="dot" /> AI/ML · {liveProvider ? state.provider_mode : "mock"}
+          </span>
+          <span className="policyVer">policy v{state.policy_version}</span>
+        </div>
+      </aside>
+
+      <div className="content">
+        <header className="topbar">
+          {view === "overview" ? (
+            <div className="topSpacer" />
+          ) : (
+            <div>
+              <p className="eyebrow">{head.eyebrow}</p>
+              <h1>{head.title}</h1>
+              <p className="subtitle">{head.subtitle}</p>
+            </div>
+          )}
+          <div className="headChips">
+            <span className="idChip">{state.rfp_id}</span>
+            {source !== "live" && <span className="demoChip">demo data</span>}
+            <DemoReset />
+          </div>
+        </header>
+
+        {source === "fallback" && (
+          <div className="banner banner-warn" role="status">
+            Backend unreachable — showing bundled demo data. Start the backend to load live state.
+          </div>
+        )}
+
+        {view === "overview" && (
+          <>
+            <section className="hero">
+              <div>
+                <p className="eyebrow">Band of Agents · Track 1 · {state.rfp_id}</p>
+                <h1 className="heroTitle">
+                  Every answer is a <em>promise.</em>
+                </h1>
+                <p className="heroLede">
+                  <strong>{state.vendor_name}</strong> is responding to <strong>{state.buyer_name}</strong>.
+                  BandGate reviews each answer before it ships — blocking unsafe commitments, gating every claim
+                  to approved evidence, and routing real risk to a human.
+                </p>
+                <button type="button" className="heroCta" onClick={() => setView("triage")}>
+                  Open triage queue <Icon name="chevron" size={16} />
+                </button>
+              </div>
+
+              <aside className="posture">
+                <div className="postureRow">
+                  <span className="postureScore">
+                    {score}
+                    <span>/100</span>
+                  </span>
+                  <span
+                    className="postureTag"
+                    style={{
+                      color: posture.color,
+                      background: `color-mix(in srgb, ${posture.color} 13%, transparent)`,
+                    }}
+                  >
+                    {posture.tag}
+                  </span>
+                </div>
+                <div className="postureMeter">
+                  <i style={{ width: `${Math.max(6, score)}%` }} />
+                </div>
+                <p className="postureFoot">
+                  Portfolio risk posture across {total} questions · {blocked} blocked for rewrite · {finalized} finalized.
+                </p>
+              </aside>
+            </section>
+
+            <section className="metrics" aria-label="Overview metrics">
+              <div className="stat stat-total">
+                <span className="statValue">{total}</span>
+                <span className="statLabel">Questions</span>
+              </div>
+              <div className="stat stat-guard">
+                <span className="statValue">{blocked}</span>
+                <span className="statLabel">Guarded</span>
+              </div>
+              <div className="stat stat-high">
+                <span className="statValue">{highRisk}</span>
+                <span className="statLabel">High risk</span>
+              </div>
+              <div className="stat stat-crit">
+                <span className="statValue">{criticalRisk}</span>
+                <span className="statLabel">Critical</span>
+              </div>
+            </section>
+          </>
+        )}
+
+        {view === "triage" && (
+          <>
+            <section className="metrics" aria-label="Risk overview">
+              <div className="stat stat-total">
+                <span className="statValue">{total}</span>
+                <span className="statLabel">Questions</span>
+              </div>
+              <div className="stat stat-guard">
+                <span className="statValue">{blocked}</span>
+                <span className="statLabel">Guarded</span>
+              </div>
+              <div className="stat stat-high">
+                <span className="statValue">{highRisk}</span>
+                <span className="statLabel">High risk</span>
+              </div>
+              <div className="stat stat-crit">
+                <span className="statValue">{criticalRisk}</span>
+                <span className="statLabel">Critical</span>
+              </div>
+            </section>
+
+            <section className="queueWide" aria-label="Question queue">
+              <div className="sectionTitle">
+                <h2>Question Queue</h2>
+                <span>{total} items · sorted by risk</span>
+              </div>
+              <div className="questionList">
+                {questions.map((question) => (
+                  <QueueRow
+                    key={question.question_id}
+                    question={question}
+                    selected={question.question_id === selected.question_id}
+                    onClick={() => openReview(question.question_id)}
+                  />
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        {view === "review" && (
+          <section className="reviewLayout" aria-label="Question review">
+            <div className="queueRail">
+              <span className="railHead">Queue · {total}</span>
+              {questions.map((question) => (
+                <QueueRow
+                  key={question.question_id}
+                  question={question}
+                  selected={question.question_id === selected.question_id}
+                  compact
+                  onClick={() => {
+                    setSelectedId(question.question_id);
+                    setSubTab("agents");
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="reviewDetail">
+              <article className={`reviewPanel answerState answer-${stateInfo.kind}`}>
+                <span className="answerIcon" aria-hidden>
+                  <Icon name={stateInfo.icon} size={20} />
+                </span>
+                <div>
+                  <span className="answerStateLabel">{stateInfo.label}</span>
+                  <p>{stateInfo.detail}</p>
+                </div>
+              </article>
+
+              <article className="reviewPanel">
+                <h3>Buyer Question</h3>
+                <p className="buyerQ">{selected.raw_question}</p>
+              </article>
+
+              <nav className="subTabs" aria-label="Review sections">
+                {subTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`subTab${subTab === tab.id ? " subTabActive" : ""}`}
+                    onClick={() => setSubTab(tab.id)}
+                    aria-current={subTab === tab.id}
+                  >
+                    <Icon name={tab.icon} size={15} />
+                    {tab.label}
+                    {tab.count !== undefined && tab.count > 0 && <span className="count">{tab.count}</span>}
+                  </button>
+                ))}
+              </nav>
+
+              {subTab === "agents" && (
+                <article className="reviewPanel">
+                  <h3>
+                    <Icon name="agents" size={15} /> Agent Timeline
+                  </h3>
+                  {selected.opinions.length > 0 ? (
+                    <ul className="timeline">
+                      {selected.opinions.map((opinion) => (
+                        <OpinionCard key={opinion.agent_name} opinion={opinion} />
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No agent opinions yet for this question.</p>
+                  )}
+                </article>
+              )}
+
+              {subTab === "evidence" && (
+                <article className="reviewPanel">
+                  <h3>
+                    <Icon name="evidence" size={15} /> Evidence &amp; Citations{" "}
+                    <span className="countPill">{evidence.length}</span>
+                  </h3>
+                  {evidence.length > 0 ? (
+                    <ul className="evidenceList">
+                      {evidence.map((item) => (
+                        <li key={item.chunk_id} className="evidenceItem">
+                          <div className="evidenceHead">
+                            <span className="evidenceDoc">{item.document_name}</span>
+                            <span className="evidenceConf">{confidencePct(item.confidence)}</span>
+                          </div>
+                          <p className="evidenceQuote">{item.quote}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No supporting evidence retrieved — any claim here is unsupported.</p>
+                  )}
+                </article>
+              )}
+
+              {subTab === "policy" && <PolicyDecisionPanel question={selected} />}
+              {subTab === "adversarial" && <AdversarialReviewPanel question={selected} />}
+              {subTab === "band" && <BandTimeline question={selected} />}
+              {subTab === "liveroom" && (
+                <LiveRoomPanel
+                  questionId={selected.question_id}
+                  rfpId={state.rfp_id}
+                  publicBackendUrl={publicBackendUrl}
+                  onDecide={decide}
+                  recommended={recommendedAnswer(selected)}
+                />
+              )}
+
+              {subTab !== "liveroom" && (
+                <p className="gateHint">
+                  Open the <strong>Live Room</strong> tab to comment, @mention agents, and record the
+                  human-gate decision (approve / escalate / reject).
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {view === "bandroom" && <BandRoom events={bandEvents} report={bandReport} />}
+        {view === "risk" && <RiskDashboard state={state} />}
+        {view === "ledger" && <PromiseLedger state={state} />}
+        {view === "exports" && <ExportBar state={state} />}
+      </div>
+    </div>
+  );
+}
