@@ -11,6 +11,7 @@ docker compose up -d --build
 docker compose run --rm backend python run_demo.py
 docker compose run --rm backend python scripts/run_band_collaboration.py
 docker compose run --rm backend python scripts/run_hardening_suite.py
+docker compose run --rm backend python scripts/generate_submission_pack.py
 docker compose run --rm frontend npm run build
 python backend/scripts/final_demo_check.py
 ```
@@ -110,6 +111,8 @@ Show Drift Control and Six-Agent Band Room panels.
 
 Show `output/hardening_report.md`.
 
+Show `output/submission_readiness.md` briefly if the recording needs a judge-facing proof page.
+
 ### 2:45-2:55 - Human Approval
 
 "The human gate approves only the safe rewrite: standard SLA language, FedRAMP in progress but not authorized, reports under NDA, and malicious buyer instructions ignored."
@@ -139,6 +142,7 @@ If live Band room sending is slow, use the generated report:
 - `output/band_collaboration_transcript.json`
 - `output/band_chat_report.md`
 - `output/hardening_report.md`
+- `output/submission_readiness.md`
 - dashboard Six-Agent Band Room panel
 - dashboard Drift Control panel
 
@@ -153,6 +157,7 @@ The story remains truthful: live Band agent connectivity is separately verified,
 - Frontend build passes.
 - AI/ML smoke probe shows `aiml_probe: ok`.
 - Hardening report generated with visible `AI/ML` and `Featherless` usage.
+- Submission readiness report generated.
 - Band verifier connects all six agents.
 - `output/band_chat_report.md` generated.
 - 3-minute video recorded.

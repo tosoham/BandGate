@@ -10,5 +10,6 @@ def test_final_demo_check_command_order() -> None:
         "demo export",
         "six-agent collaboration report",
         "hardening report",
+        "submission readiness report",
         "frontend build",
     ]

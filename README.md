@@ -324,6 +324,9 @@ docker compose run --rm backend python scripts/run_band_collaboration.py
 # Pressure-test harder cybersecurity traps with AI/ML + Featherless
 docker compose run --rm backend python scripts/run_hardening_suite.py
 
+# Generate the judge-facing submission readiness package
+docker compose run --rm backend python scripts/generate_submission_pack.py
+
 # Fast deterministic report for recording rehearsals
 docker compose run --rm -e BAND_COLLAB_SALES_LIMIT=0 -e BAND_COLLAB_INTAKE_RISK_LIMIT=0 -e BAND_COLLAB_REPORT_LIMIT=0 backend python scripts/run_band_collaboration.py
 
@@ -385,6 +388,7 @@ npm run build
 | `GET` | `/exports/promise-ledger` | Promise Ledger records as JSON. |
 | `GET` | `/exports/band-chat-report` | Generated six-agent Band collaboration report as Markdown. |
 | `GET` | `/exports/hardening-report` | Generated hardening stress-test report as Markdown. |
+| `GET` | `/exports/submission-readiness` | Generated judge-facing readiness report as Markdown. |
 
 The frontend's `page.tsx` reads `${BACKEND_URL}/state` and gracefully falls back to
 `lib/mockState.ts` if the backend is unreachable.
@@ -425,6 +429,8 @@ Current coverage:
 - `output/band_chat_report.md`
 - `output/hardening_results.json`
 - `output/hardening_report.md`
+- `output/submission_readiness.json`
+- `output/submission_readiness.md`
 
 ## Demo runbook
 
@@ -433,9 +439,10 @@ For the most reliable final demo:
 1. Start the stack: `docker compose up -d --build`
 2. Regenerate canonical output: `docker compose run --rm backend python run_demo.py`
 3. Generate the six-agent collaboration report: `docker compose run --rm backend python scripts/run_band_collaboration.py`
-4. Verify providers when live mode is enabled: `docker compose run --rm backend python scripts/probe_providers.py`
-5. Open the dashboard at `http://localhost:3000`
-6. Walk the SLA conflict, prompt-injection example, drift control panel, final export, and Promise Ledger panels
+4. Generate the hardening and submission reports: `docker compose run --rm backend python scripts/run_hardening_suite.py && docker compose run --rm backend python scripts/generate_submission_pack.py`
+5. Verify providers when live mode is enabled: `docker compose run --rm backend python scripts/probe_providers.py`
+6. Open the dashboard at `http://localhost:3000`
+7. Walk the SLA conflict, prompt-injection example, drift control panel, final export, and Promise Ledger panels
 
 For a one-command freeze check before recording or submitting:
 

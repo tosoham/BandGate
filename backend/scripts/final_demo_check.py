@@ -73,6 +73,22 @@ COMMANDS: list[tuple[str, list[str]]] = [
             "scripts/run_hardening_suite.py",
         ],
     ),
+    (
+        "submission readiness report",
+        [
+            "docker",
+            "compose",
+            "run",
+            "--rm",
+            "-e",
+            "AIML_MODE=mock",
+            "-e",
+            "FEATHERLESS_MODE=mock",
+            "backend",
+            "python",
+            "scripts/generate_submission_pack.py",
+        ],
+    ),
     ("frontend build", ["docker", "compose", "run", "--rm", "frontend", "npm", "run", "build"]),
 ]
 

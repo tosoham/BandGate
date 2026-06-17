@@ -105,6 +105,14 @@ def hardening_report_export() -> str:
     return path.read_text(encoding="utf-8")
 
 
+@app.get("/exports/submission-readiness", response_class=PlainTextResponse)
+def submission_readiness_export() -> str:
+    path = Path("output/submission_readiness.md")
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="submission readiness report has not been generated")
+    return path.read_text(encoding="utf-8")
+
+
 @app.post("/questions/{question_id}/decision")
 def decide(question_id: str, body: DecisionRequest) -> dict:
     try:

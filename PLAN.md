@@ -15,6 +15,30 @@ The RFP is only the container. The real product is commitment control.
 
 ---
 
+## Day 6 Final Polish
+
+Day 6 is the submission-readiness layer, not a new product direction. The goal is to make the existing BandGate build easy for judges to understand, verify, and record.
+
+### Scope
+
+- Generate a judge-facing submission readiness report at `output/submission_readiness.md`.
+- Verify the final artifact set: canonical state, final answer, audit trail, Promise Ledger, Band chat report, transcript, hardening results, and hardening report.
+- Confirm all six BandGate agents appear in the collaboration transcript.
+- Confirm drift control finds at least one unsafe role violation.
+- Confirm hardening scenarios are blocked before release.
+- Show configured provider posture without exposing secrets: Band mode, AI/ML mode/model, Featherless mode/model, and whether keys are present.
+- Keep design work isolated so Ishita can continue frontend polish without backend churn.
+
+### Final Recording Story
+
+1. BandGate is commitment control for cybersecurity RFPs.
+2. Band makes the six-agent negotiation visible.
+3. AI/ML supports structured intake, draft assist, drift enrichment, and judge summaries.
+4. Featherless independently red-teams hallucination, unsupported claims, prompt injection, and sensitive disclosure.
+5. Deterministic policy remains canonical, so live provider flakiness cannot break the demo.
+
+---
+
 ## 1. Product Focus
 
 ### One-liner
