@@ -648,7 +648,7 @@ unless `AIML_ENABLED=true`; live calls are capped per process with `AIML_NORMALI
 **Soham — Gate half**
 
 - Backend: Featherless adversarial reviewer with `mock` and `lite` modes for prompt-injection, unsupported-claim, contradiction, and hallucination scoring.
-- Backend: Band SDK integration using `band-sdk` / `thenvoi`; create Remote Agents in Band, store each role's Agent UUID/API key in `agent_config.yaml`, and use rooms for collaboration/routing.
+- Backend: Band SDK integration using `band-sdk` / `band`; create Remote Agents in Band, store each role's Agent UUID/API key in `agent_config.yaml`, and use rooms for collaboration/routing.
 - Frontend: Band event timeline, adversarial review panel, and a demo reset button.
 
 **Integration gate:** Band room shows the SLA conflict from assignment through policy block and approval request.

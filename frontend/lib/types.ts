@@ -95,8 +95,8 @@ export type ProviderStatus = {
   aiml_live_limits: Record<string, number>;
   featherless_live_limits: Record<string, number>;
   band_default_room_id: string | null;
-  thenvoi_rest_url: string;
-  thenvoi_ws_url: string;
+  band_rest_url: string;
+  band_ws_url: string;
 };
 
 export type BandEventRecord = {

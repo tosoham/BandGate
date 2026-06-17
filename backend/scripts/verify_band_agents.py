@@ -19,7 +19,7 @@ def validate_config_shape() -> None:
 async def verify_live_connection(agent_name: str) -> None:
     try:
         from band import Agent
-        from band.adapters.langgraph import LangGraphAdapter
+        from band.adapters import LangGraphAdapter
         from band.config import load_agent_config
         from langchain_openai import ChatOpenAI
         from langgraph.checkpoint.memory import InMemorySaver
@@ -52,8 +52,8 @@ async def verify_live_connection(agent_name: str) -> None:
         adapter=adapter,
         agent_id=agent_id,
         api_key=api_key,
-        ws_url=os.getenv("THENVOI_WS_URL"),
-        rest_url=os.getenv("THENVOI_REST_URL"),
+        ws_url=os.getenv("BAND_WS_URL") or os.getenv("THENVOI_WS_URL"),
+        rest_url=os.getenv("BAND_REST_URL") or os.getenv("THENVOI_REST_URL"),
     )
     await agent.start()
     print(f"{agent_name}: connected as {getattr(agent, 'agent_name', 'remote-agent')}")

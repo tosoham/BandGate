@@ -229,8 +229,8 @@ state canonical, so a flaky API never breaks the run. Configure keys in `.env`:
 | `BAND_MODE` | Band client | `mock`, `lite`, or `live`; use `lite` while SDK/API quota is constrained. |
 | `FEATHERLESS_MODE` | Adversarial reviewer | `mock`, `lite`, or `live`; use `lite` for the free trial tier. |
 | `AIML_MODE` | Intake + drafting + policy | `mock`, `lite`, or `live`; use `lite` for the free tier. |
-| `THENVOI_REST_URL` | Band SDK | REST base URL, default `https://app.band.ai/`. |
-| `THENVOI_WS_URL` | Band SDK | WebSocket URL, default `wss://app.band.ai/api/v1/socket/websocket`. |
+| `BAND_REST_URL` | Band SDK | REST base URL, default `https://app.band.ai/`. |
+| `BAND_WS_URL` | Band SDK | WebSocket URL, default `wss://app.band.ai/api/v1/socket/websocket`. |
 | `BAND_DEFAULT_ROOM_ID` | Band SDK | Optional existing room ID for demo routing. |
 | `DEMO_MODE` | All providers | `mock` runs fully offline with deterministic fallbacks; set to live mode to exercise real provider calls. |
 
@@ -248,7 +248,7 @@ PYTHONPATH=backend python backend/scripts/probe_providers.py
 
 ### Band SDK setup
 
-Band uses the `band-sdk` package and the `thenvoi` Python module. The SDK connects Remote
+Band uses the `band-sdk` package and the `band` Python module. The SDK connects Remote
 Agents to Band over REST + WebSocket. Each running agent needs credentials from the Band
 platform:
 
@@ -259,13 +259,17 @@ platform:
 3. Rooms are for collaboration and routing. A room does not issue every agent's credentials;
    each Remote Agent has its own UUID/API key and joins or is added to rooms through the SDK's
    room/participant tools.
-4. The SDK exposes tools such as `thenvoi_send_message`, `thenvoi_send_event`,
-   `thenvoi_add_participant`, `thenvoi_get_participants`, and `thenvoi_create_chatroom`.
+4. The SDK exposes tools such as `band_send_message`, `band_send_event`,
+   `band_add_participant`, `band_get_participants`, and `band_create_chatroom`.
 
 The backend `BandClient` adapter records the same event payloads in `mock`/`lite` mode. Live
 mode should run the six Remote Agents with `band-sdk[langgraph]` once `agent_config.yaml` and an
 approved LLM adapter are filled. The official SDK docs describe `Agent.create(...)` plus
 `await agent.run()` as the point where the WebSocket subscriptions stay active.
+
+Band SDK v1.0.0 removed the old `thenvoi-sdk` / `thenvoi.*` import path. BandGate now documents
+`BAND_REST_URL` and `BAND_WS_URL` as the canonical env vars, while still accepting the legacy
+`THENVOI_*` names as compatibility fallbacks so older local `.env` files keep working.
 
 ---
 

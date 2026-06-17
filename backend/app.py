@@ -54,8 +54,8 @@ def providers() -> dict:
             "review": config.featherless_review_live_limit,
         },
         "band_default_room_id": config.band_default_room_id,
-        "thenvoi_rest_url": config.thenvoi_rest_url,
-        "thenvoi_ws_url": config.thenvoi_ws_url,
+        "band_rest_url": config.band_rest_url,
+        "band_ws_url": config.band_ws_url,
     }
 
 

@@ -16,7 +16,7 @@ dev = [
   "pytest>=8.2.0",
 ]
 band = [
-  "band-sdk[langgraph]>=0.1.0",
+  "band-sdk[langgraph]>=1.0.0",
   "langchain-openai>=0.2.0",
 ]
 

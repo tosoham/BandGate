@@ -37,7 +37,7 @@ class BandEvent:
 class BandClient:
     """Band integration seam.
 
-    Band SDK docs use the `band-sdk` package and `thenvoi` module. Live agents
+    Band SDK docs use the `band-sdk` package and `band` module. Live agents
     should be created as Remote Agents on the Band platform, with per-agent
     credentials stored in agent_config.yaml. Mock/lite mode records the same
     event payloads locally so the demo remains deterministic.
@@ -52,8 +52,8 @@ class BandClient:
             return self._write_local_event(event)
 
         raise NotImplementedError(
-            "Live Band SDK mode should run each Remote Agent with band-sdk/thenvoi "
-            "using agent_config.yaml credentials and THENVOI_REST_URL/THENVOI_WS_URL."
+            "Live Band SDK mode should run each Remote Agent with band-sdk/band "
+            "using agent_config.yaml credentials and BAND_REST_URL/BAND_WS_URL."
         )
 
     def _write_local_event(self, event: BandEvent) -> dict[str, Any]:

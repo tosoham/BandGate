@@ -12,8 +12,8 @@ def test_band_client_records_lite_events(tmp_path) -> None:
         featherless_api_key=None,
         aiml_api_key=None,
         band_default_room_id=None,
-        thenvoi_rest_url="https://app.band.ai/",
-        thenvoi_ws_url="wss://app.band.ai/api/v1/socket/websocket",
+        band_rest_url="https://app.band.ai/",
+        band_ws_url="wss://app.band.ai/api/v1/socket/websocket",
     )
     client = BandClient(config=config, event_log=str(tmp_path / "band_events.jsonl"))
     record = client.post_event(

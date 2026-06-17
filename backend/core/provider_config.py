@@ -20,8 +20,8 @@ class ProviderConfig:
     featherless_api_key: str | None
     aiml_api_key: str | None
     band_default_room_id: str | None
-    thenvoi_rest_url: str
-    thenvoi_ws_url: str
+    band_rest_url: str
+    band_ws_url: str
     aiml_enabled: bool = False
     aiml_base_url: str = "https://api.aimlapi.com/v1"
     aiml_model: str = "google/gemma-3-4b-it"
@@ -40,8 +40,8 @@ def load_provider_config() -> ProviderConfig:
         featherless_api_key=os.getenv("FEATHERLESS_API_KEY") or None,
         aiml_api_key=os.getenv("AIML_API_KEY") or None,
         band_default_room_id=os.getenv("BAND_DEFAULT_ROOM_ID") or None,
-        thenvoi_rest_url=os.getenv("THENVOI_REST_URL", "https://app.band.ai/"),
-        thenvoi_ws_url=os.getenv("THENVOI_WS_URL", "wss://app.band.ai/api/v1/socket/websocket"),
+        band_rest_url=_env_alias("BAND_REST_URL", "THENVOI_REST_URL", "https://app.band.ai/"),
+        band_ws_url=_env_alias("BAND_WS_URL", "THENVOI_WS_URL", "wss://app.band.ai/api/v1/socket/websocket"),
         aiml_enabled=os.getenv("AIML_ENABLED", "false").lower() == "true",
         aiml_base_url=os.getenv("AIML_BASE_URL", "https://api.aimlapi.com/v1").rstrip("/"),
         aiml_model=os.getenv("AIML_MODEL", "google/gemma-3-4b-it"),
@@ -58,3 +58,7 @@ def _int_env(name: str, default: int) -> int:
         return max(int(os.getenv(name, str(default))), 0)
     except ValueError:
         return default
+
+
+def _env_alias(primary: str, legacy: str, default: str) -> str:
+    return os.getenv(primary) or os.getenv(legacy) or default
