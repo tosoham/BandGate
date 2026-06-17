@@ -11,8 +11,12 @@ BandEventType = Literal[
     "agent_output",
     "policy_blocked",
     "adversarial_finding",
+    "aiml_enrichment",
+    "drift_control_finding",
     "human_approval",
     "final_export",
+    "room_message",
+    "collaboration_report",
 ]
 
 

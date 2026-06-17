@@ -3,8 +3,60 @@ import sys
 
 
 COMMANDS: list[tuple[str, list[str]]] = [
-    ("backend tests", ["docker", "compose", "run", "--rm", "backend", "pytest"]),
-    ("demo export", ["docker", "compose", "run", "--rm", "backend", "python", "run_demo.py"]),
+    ("docker build", ["docker", "compose", "build", "backend", "frontend"]),
+    (
+        "backend tests",
+        [
+            "docker",
+            "compose",
+            "run",
+            "--rm",
+            "-e",
+            "AIML_ENABLED=false",
+            "-e",
+            "FEATHERLESS_MODE=mock",
+            "backend",
+            "pytest",
+        ],
+    ),
+    (
+        "demo export",
+        [
+            "docker",
+            "compose",
+            "run",
+            "--rm",
+            "-e",
+            "AIML_MODE=mock",
+            "-e",
+            "FEATHERLESS_MODE=mock",
+            "backend",
+            "python",
+            "run_demo.py",
+        ],
+    ),
+    (
+        "six-agent collaboration report",
+        [
+            "docker",
+            "compose",
+            "run",
+            "--rm",
+            "-e",
+            "BAND_COLLAB_SALES_LIMIT=0",
+            "-e",
+            "BAND_COLLAB_INTAKE_RISK_LIMIT=0",
+            "-e",
+            "BAND_COLLAB_REPORT_LIMIT=0",
+            "-e",
+            "AIML_MODE=mock",
+            "-e",
+            "FEATHERLESS_MODE=mock",
+            "backend",
+            "python",
+            "scripts/run_band_collaboration.py",
+        ],
+    ),
     ("frontend build", ["docker", "compose", "run", "--rm", "frontend", "npm", "run", "build"]),
 ]
 

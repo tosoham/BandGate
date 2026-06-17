@@ -49,6 +49,9 @@ def providers() -> dict:
         "aiml_live_limits": {
             "normalize": config.aiml_normalize_live_limit,
             "sales_draft": config.aiml_sales_live_limit,
+            "drift": config.aiml_drift_live_limit,
+            "intake_risk": config.aiml_intake_risk_live_limit,
+            "report": config.aiml_report_live_limit,
         },
         "featherless_live_limits": {
             "review": config.featherless_review_live_limit,
@@ -84,6 +87,14 @@ def audit_trail_export() -> list[dict]:
 @app.get("/exports/promise-ledger")
 def promise_ledger_export() -> list[dict]:
     return promise_ledger_records(get_state())
+
+
+@app.get("/exports/band-chat-report", response_class=PlainTextResponse)
+def band_chat_report_export() -> str:
+    path = Path("output/band_chat_report.md")
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="band chat report has not been generated")
+    return path.read_text(encoding="utf-8")
 
 
 @app.post("/questions/{question_id}/decision")

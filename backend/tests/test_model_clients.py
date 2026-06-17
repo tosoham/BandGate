@@ -2,6 +2,7 @@ from core.model_clients import (
     aiml_available,
     describe_model_call,
     featherless_available,
+    get_provider_call_counts,
     reset_provider_call_counts,
 )
 
@@ -36,3 +37,20 @@ def test_featherless_live_uses_documented_defaults(monkeypatch) -> None:
 
 def test_provider_call_counts_can_reset() -> None:
     reset_provider_call_counts()
+    counts = get_provider_call_counts()
+    counts["aiml_report"] = 99
+
+    assert get_provider_call_counts() == {}
+
+
+def test_aiml_new_demo_budgets_are_configurable(monkeypatch) -> None:
+    monkeypatch.setenv("AIML_DRIFT_LIVE_LIMIT", "4")
+    monkeypatch.setenv("AIML_INTAKE_RISK_LIVE_LIMIT", "5")
+    monkeypatch.setenv("AIML_REPORT_LIVE_LIMIT", "1")
+
+    from core.provider_config import load_provider_config
+
+    config = load_provider_config()
+    assert config.aiml_drift_live_limit == 4
+    assert config.aiml_intake_risk_live_limit == 5
+    assert config.aiml_report_live_limit == 1

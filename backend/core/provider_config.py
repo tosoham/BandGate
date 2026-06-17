@@ -29,6 +29,9 @@ class ProviderConfig:
     featherless_model: str | None = None
     aiml_normalize_live_limit: int = 2
     aiml_sales_live_limit: int = 2
+    aiml_drift_live_limit: int = 6
+    aiml_intake_risk_live_limit: int = 6
+    aiml_report_live_limit: int = 2
     featherless_review_live_limit: int = 3
 
 
@@ -49,6 +52,9 @@ def load_provider_config() -> ProviderConfig:
         featherless_model=os.getenv("FEATHERLESS_MODEL") or "Qwen/Qwen2.5-7B-Instruct",
         aiml_normalize_live_limit=_int_env("AIML_NORMALIZE_LIVE_LIMIT", 2),
         aiml_sales_live_limit=_int_env("AIML_SALES_LIVE_LIMIT", 2),
+        aiml_drift_live_limit=_int_env("AIML_DRIFT_LIVE_LIMIT", 6),
+        aiml_intake_risk_live_limit=_int_env("AIML_INTAKE_RISK_LIVE_LIMIT", 6),
+        aiml_report_live_limit=_int_env("AIML_REPORT_LIVE_LIMIT", 2),
         featherless_review_live_limit=_int_env("FEATHERLESS_REVIEW_LIVE_LIMIT", 3),
     )
 

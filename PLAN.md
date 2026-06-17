@@ -687,6 +687,97 @@ unless `AIML_ENABLED=true`; live calls are capped per process with `AIML_NORMALI
 
 ---
 
+## 8A. Final 48-Hour Soham Plan
+
+**Ownership:** Soham owns all remaining final submission work. Ishita's answer-side work is verified and frozen unless tests fail.
+
+**Goal:** Turn BandGate from a strong local workflow into a judge-visible six-agent Band collaboration demo.
+
+### Six-agent Band collaboration
+
+All six existing agents must appear in the collaboration layer:
+
+- `intake_agent`
+- `sales_engineer`
+- `security_compliance`
+- `product_capability`
+- `legal_commitment_guard`
+- `adversarial_reviewer`
+
+The final demo uses a deterministic/scripted Band war-room path so the recording is reliable, with optional live Band transport enabled by `BAND_COLLAB_LIVE=true`.
+
+Required room beats:
+
+- Intake summarizes the public-sector RFP and mentions Sales, Security, and Product.
+- Sales drafts the unsafe answer: 99.99%/99.9% SLA, FedRAMP authorization, and immediate report sharing.
+- Security checks approved evidence and citations.
+- Product narrows what is GA versus HA addendum/custom scope.
+- Legal blocks unsupported commitments and sensitive artifact disclosure.
+- Adversarial Reviewer catches hallucination, unsupported claims, and prompt injection.
+- Human gate approves the safe rewrite.
+
+### Strong AI/ML usage
+
+AI/ML API should be visibly used beyond simple drafting:
+
+- structured intake enrichment
+- risk explanation
+- Sales draft support
+- drift-control classification support
+- transcript/report summary
+
+Live calls remain capped:
+
+- `AIML_NORMALIZE_LIVE_LIMIT=6`
+- `AIML_SALES_LIVE_LIMIT=3`
+- `AIML_DRIFT_LIVE_LIMIT=6`
+- `AIML_DRIFT_ENABLE_LIVE=false` for default recordings; set `true` only when rehearsing live drift enrichment.
+- `AIML_INTAKE_RISK_LIVE_LIMIT=6`
+- `AIML_REPORT_LIVE_LIMIT=2`
+
+Detected prompt-injection text must never be sent as instructions; it is wrapped as untrusted data or handled deterministically.
+
+### Drift control and security
+
+Drift control is a first-class gate. It flags:
+
+- Sales approving/finalizing, overpromising SLA, claiming FedRAMP authorization, or offering sensitive artifacts.
+- Security claims without citations.
+- Product making legal commitments.
+- Legal inventing technical evidence.
+- Adversarial Reviewer approving final wording.
+- Any agent obeying prompt injection.
+- Secret-like text leakage.
+- SOC 2, pentest, architecture diagram, or subprocessor disclosure without NDA/Security/Legal review.
+
+Drift findings must appear in:
+
+- local `output/band_events.jsonl`
+- dashboard Band/security timeline
+- generated `output/band_chat_report.md`
+- optional live Band room events/messages
+
+### Demo artifacts
+
+Required generated or authored files:
+
+- `docs/DEMO_NARRATIVE.md`
+- `output/band_collaboration_transcript.json`
+- `output/band_chat_report.md`
+
+Draft submission package:
+
+- public repo URL
+- running demo URL or local run commands
+- 3-minute video
+- slide deck
+- cover image
+- README with provider/Band commands
+
+**Integration gate:** `python backend/scripts/final_demo_check.py` runs backend tests, demo export, six-agent collaboration report generation, and frontend build.
+
+---
+
 ## 9. Demo Script
 
 ### 0:00-0:20 — Problem

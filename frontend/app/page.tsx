@@ -53,6 +53,23 @@ async function getBandEvents(): Promise<BandEventRecord[]> {
   }
 }
 
+async function getBandChatReport(): Promise<string> {
+  const baseUrl = process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (!baseUrl) {
+    return "";
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/exports/band-chat-report`, { cache: "no-store" });
+    if (!response.ok) {
+      return "";
+    }
+    return await response.text();
+  } catch {
+    return "";
+  }
+}
+
 function riskClass(risk: string) {
   return `risk risk-${risk}`;
 }
@@ -67,11 +84,15 @@ export default async function Home() {
   const state = await getState();
   const providers = await getProviders();
   const bandEvents = await getBandEvents();
+  const bandChatReport = await getBandChatReport();
   const questions = Object.values(state.questions);
   const highRisk = questions.filter((question) => question.risk_level === "high").length;
   const criticalRisk = questions.filter((question) => question.risk_level === "critical").length;
   const blocked = questions.filter((question) => question.conflict_detected).length;
   const finalized = questions.filter((question) => question.status === "finalized").length;
+  const driftEvents = bandEvents.filter((event) => event.event_type === "drift_control_finding");
+  const publicBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? process.env.BACKEND_URL ?? "";
+  const reportPreview = bandChatReport.split("\n").slice(0, 22).join("\n");
   const selected = questions.find((question) => question.risk_tags.includes("sla_overcommitment")) ?? questions[0];
 
   return (
@@ -104,6 +125,14 @@ export default async function Home() {
           <span className="metricValue">{criticalRisk}</span>
           <span className="metricLabel">Critical</span>
         </div>
+        <div>
+          <span className="metricValue">{blocked}</span>
+          <span className="metricLabel">Blocked</span>
+        </div>
+        <div>
+          <span className="metricValue">{driftEvents.length}</span>
+          <span className="metricLabel">Drift findings</span>
+        </div>
       </section>
 
       <section className="providerStrip" aria-label="Provider modes">
@@ -112,6 +141,7 @@ export default async function Home() {
         <span>Featherless: {providers?.featherless_live_ready ? `${providers.featherless_mode} · ${providers.featherless_model}` : "lite"}</span>
         <span>Ledger: {state.promise_ledger.length} commitments</span>
         <span>Audit: {state.audit_trail.length} events</span>
+        <span>Six-agent room: {bandEvents.some((event) => event.event_type === "collaboration_report") ? "scripted" : "pending"}</span>
       </section>
 
       <section className="workspace">
@@ -195,10 +225,10 @@ export default async function Home() {
           </article>
 
           <article className="reviewPanel">
-            <h3>Band Event Stream</h3>
+            <h3>Six-Agent Band Room</h3>
             {bandEvents.length ? (
               <ol className="timeline">
-                {bandEvents.slice(-6).map((event, index) => (
+                {bandEvents.slice(-8).map((event, index) => (
                   <li key={`${event.timestamp}-${index}`}>
                     <span>{event.event_type.replaceAll("_", " ")}</span>
                     <p>{event.agent}: {event.summary}</p>
@@ -211,6 +241,36 @@ export default async function Home() {
             )}
           </article>
         </div>
+      </section>
+
+      <section className="reportGrid" aria-label="Band chat report and drift control">
+        <article className="reviewPanel">
+          <div className="sectionTitle">
+            <h2>Drift Control</h2>
+            <span>{driftEvents.length} findings</span>
+          </div>
+          {driftEvents.length ? (
+            <ol className="timeline">
+              {driftEvents.slice(-5).map((event, index) => (
+                <li key={`${event.timestamp}-drift-${index}`}>
+                  <span>{event.agent.replaceAll("_", " ")}</span>
+                  <p>{event.summary}</p>
+                  <small>{event.risk_level ?? "high"} · human approval required</small>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>Run the six-agent collaboration script to generate drift findings.</p>
+          )}
+        </article>
+
+        <article className="reviewPanel">
+          <div className="sectionTitle">
+            <h2>Band Chat Report</h2>
+            {publicBackendUrl ? <a className="exportLink" href={`${publicBackendUrl}/exports/band-chat-report`}>Open report</a> : <span>pending</span>}
+          </div>
+          <pre className="reportPreview">{reportPreview || "Run python backend/scripts/run_band_collaboration.py to generate the report."}</pre>
+        </article>
       </section>
     </main>
   );

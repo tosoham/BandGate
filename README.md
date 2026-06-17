@@ -225,6 +225,11 @@ state canonical, so a flaky API never breaks the run. Configure keys in `.env`:
 | `AIML_MODEL` | Intake + drafting + policy | Low-cost default from AI/ML quickstart: `google/gemma-3-4b-it`. |
 | `AIML_NORMALIZE_LIVE_LIMIT` | Intake | Max live AI/ML normalization calls per process; default `2`. |
 | `AIML_SALES_LIVE_LIMIT` | Sales draft | Max live AI/ML sales-draft calls per process; default `2`. |
+| `AIML_DRIFT_LIVE_LIMIT` | Drift control | Max live AI/ML drift-classification calls per process; default `6`. |
+| `AIML_DRIFT_ENABLE_LIVE` | Drift control | If `true`, use AI/ML to enrich deterministic drift findings; default `false` for fast recording. |
+| `AIML_DRIFT_SCAN_ALL` | Drift control | If `true`, ask AI/ML to review every room message; default `false` for faster demos. |
+| `AIML_INTAKE_RISK_LIVE_LIMIT` | Intake | Max live AI/ML risk-enrichment calls per process; default `6`. |
+| `AIML_REPORT_LIVE_LIMIT` | Demo report | Max live AI/ML chat-report summary calls per process; default `2`. |
 | `FEATHERLESS_REVIEW_LIVE_LIMIT` | Adversarial reviewer | Max live Featherless red-team calls per process; default `3`. |
 | `BAND_MODE` | Band client | `mock`, `lite`, or `live`; use `lite` while SDK/API quota is constrained. |
 | `FEATHERLESS_MODE` | Adversarial reviewer | `mock`, `lite`, or `live`; use `lite` for the free trial tier. |
@@ -306,6 +311,12 @@ docker compose run --rm -v ./agent_config.yaml:/app/agent_config.yaml:ro backend
 # Sparse provider smoke test
 docker compose run --rm backend python scripts/probe_providers.py
 
+# Generate the six-agent Band collaboration transcript and chat report
+docker compose run --rm backend python scripts/run_band_collaboration.py
+
+# Fast deterministic report for recording rehearsals
+docker compose run --rm -e BAND_COLLAB_SALES_LIMIT=0 -e BAND_COLLAB_INTAKE_RISK_LIMIT=0 -e BAND_COLLAB_REPORT_LIMIT=0 backend python scripts/run_band_collaboration.py
+
 # Optional: keep the Band lite/mock event stream service running
 docker compose --profile band up -d band-service
 ```
@@ -362,6 +373,7 @@ npm run build
 | `GET` | `/exports/final-response` | Final RFP response as Markdown. |
 | `GET` | `/exports/audit-trail` | Audit trail records as JSON. |
 | `GET` | `/exports/promise-ledger` | Promise Ledger records as JSON. |
+| `GET` | `/exports/band-chat-report` | Generated six-agent Band collaboration report as Markdown. |
 
 The frontend's `page.tsx` reads `${BACKEND_URL}/state` and gracefully falls back to
 `lib/mockState.ts` if the backend is unreachable.
@@ -398,6 +410,8 @@ Current coverage:
 - `output/audit_trail.json`
 - `output/promise_ledger.json`
 - `output/final_response.md`
+- `output/band_collaboration_transcript.json`
+- `output/band_chat_report.md`
 
 ## Demo runbook
 
@@ -405,9 +419,10 @@ For the most reliable final demo:
 
 1. Start the stack: `docker compose up -d --build`
 2. Regenerate canonical output: `docker compose run --rm backend python run_demo.py`
-3. Verify providers when live mode is enabled: `docker compose run --rm backend python scripts/probe_providers.py`
-4. Open the dashboard at `http://localhost:3000`
-5. Walk the SLA conflict, prompt-injection example, final export, and Promise Ledger panels
+3. Generate the six-agent collaboration report: `docker compose run --rm backend python scripts/run_band_collaboration.py`
+4. Verify providers when live mode is enabled: `docker compose run --rm backend python scripts/probe_providers.py`
+5. Open the dashboard at `http://localhost:3000`
+6. Walk the SLA conflict, prompt-injection example, drift control panel, final export, and Promise Ledger panels
 
 For a one-command freeze check before recording or submitting:
 

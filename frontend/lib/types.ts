@@ -107,6 +107,7 @@ export type BandEventRecord = {
   summary: string;
   risk_level: string | null;
   requires_human_approval: boolean;
+  payload?: unknown;
   provider_mode: string;
   timestamp: string;
 };
