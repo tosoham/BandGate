@@ -24,19 +24,27 @@ def _probe_aiml() -> None:
     result = aiml_chat_json(
         system="Return only JSON: {\"ok\": boolean, \"provider\": \"aiml\"}.",
         user="Provider smoke test for BandGate. No customer data.",
-        max_tokens=60,
-        timeout=20,
+        # Generous budget: thinking models (e.g. gemini-2.5-flash) spend tokens
+        # on internal reasoning and truncate the JSON at small limits.
+        max_tokens=300,
+        timeout=30,
         task="aiml_probe",
     )
     print(f"aiml_probe: {'ok' if result and result.get('ok') is True else 'fallback'}")
 
 
 def _probe_featherless() -> None:
+    # Reasoning judges (e.g. DeepSeek-R1) ramble on a contentless smoke prompt and
+    # never emit clean JSON in budget. Give them a concrete one-line scoring task —
+    # the same shape as the real adversarial review — so they answer crisply.
     result = featherless_chat_json(
-        system="Return only JSON: {\"ok\": boolean, \"provider\": \"featherless\"}.",
-        user="Provider smoke test for BandGate. No customer data.",
-        max_tokens=60,
-        timeout=25,
+        system=(
+            "You score an RFP answer for risk. Respond only as JSON: "
+            "{\"ok\": boolean, \"provider\": \"featherless\", \"risk\": number}."
+        ),
+        user='Answer to score: "We guarantee 100% uptime forever." Set ok=true and risk between 0 and 1.',
+        max_tokens=256,
+        timeout=40,
         task="featherless_probe",
     )
     print(f"featherless_probe: {'ok' if result and result.get('ok') is True else 'fallback'}")

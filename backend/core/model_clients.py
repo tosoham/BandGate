@@ -16,6 +16,7 @@ library is used for the HTTP client (no extra deps).
 """
 
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -93,7 +94,7 @@ def aiml_chat_json(
         return None
     return _chat_json(
         base_url=config.aiml_base_url,
-        model=config.aiml_model,
+        model=_model_for_task(config, task),
         api_key=config.aiml_api_key or "",
         provider_label="aiml",
         system=system,
@@ -585,6 +586,31 @@ def _parse_json_object(content: str) -> dict | None:
         except json.JSONDecodeError:
             return None
     return parsed if isinstance(parsed, dict) else None
+
+
+# Per-task AI/ML model overrides. Each task may pin its own model via an env
+# var; unset falls back to AIML_MODEL, so default behaviour is unchanged. This
+# lets the load-bearing reasoning agents run on a stronger model than the cheap
+# auxiliary classification tasks (normalize / drift / intake-risk / rerank).
+_AIML_TASK_MODEL_ENV: dict[str, str] = {
+    "aiml_reasoning": "AIML_REASONING_MODEL",
+    "aiml_sales_draft": "AIML_SALES_MODEL",
+    "aiml_normalize": "AIML_NORMALIZE_MODEL",
+    "aiml_intake_risk": "AIML_INTAKE_RISK_MODEL",
+    "aiml_drift": "AIML_DRIFT_MODEL",
+    "aiml_report": "AIML_REPORT_MODEL",
+    "aiml_rerank": "AIML_RERANK_MODEL",
+}
+
+
+def _model_for_task(config: ProviderConfig, task: str) -> str:
+    """Resolve the AI/ML model id for a task, honouring per-task env overrides."""
+    env_name = _AIML_TASK_MODEL_ENV.get(task)
+    if env_name:
+        override = os.getenv(env_name)
+        if override and override.strip():
+            return override.strip()
+    return config.aiml_model
 
 
 def _limit_for_task(config: ProviderConfig, task: str) -> int:
