@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import RfpUpload from "../../components/RfpUpload";
 import { fetchRfpList } from "../../lib/api";
 import type { RfpQuestionSummary } from "../../lib/types";
 
@@ -29,6 +30,12 @@ export default async function IntakePage() {
             <span>{totalRisk.critical} critical</span>
           </div>
         </header>
+        <RfpUpload />
+        {(data?.questions?.length ?? 0) === 0 ? (
+          <p className="intakeEmpty">
+            No questions loaded yet. Upload a questionnaire CSV above to begin.
+          </p>
+        ) : null}
         <section className="intakeGroups">
           {Object.entries(grouped).map(([category, items]) => (
             <article key={category} className="intakeGroup">

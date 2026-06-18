@@ -1,15 +1,15 @@
-import { mockState } from "../../lib/mockState";
+import EmptyWorkspace from "../../components/EmptyWorkspace";
 import type { BandEventRecord, BandGateState, ProviderStatus, RFPQuestionState } from "../../lib/types";
 
-async function getState(): Promise<BandGateState> {
+async function getState(): Promise<BandGateState | null> {
   const baseUrl = process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
-  if (!baseUrl) return mockState;
+  if (!baseUrl) return null;
   try {
     const response = await fetch(`${baseUrl}/state`, { cache: "no-store" });
-    if (!response.ok) return mockState;
+    if (!response.ok) return null;
     return (await response.json()) as BandGateState;
   } catch {
-    return mockState;
+    return null;
   }
 }
 
@@ -61,6 +61,7 @@ function statusLabel(question: RFPQuestionState) {
 
 export default async function Dashboard() {
   const state = await getState();
+  if (!state) return <EmptyWorkspace offline />;
   const providers = await getProviders();
   const bandEvents = await getBandEvents();
   const bandChatReport = await getBandChatReport();

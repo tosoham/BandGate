@@ -1,26 +1,20 @@
 import Dashboard from "../components/Dashboard";
-import { mockState } from "../lib/mockState";
+import EmptyWorkspace from "../components/EmptyWorkspace";
 import type { BandEventRecord, BandGateState } from "../lib/types";
-
-type StateSource = "live" | "fallback" | "demo";
 
 function backendBaseUrl() {
   return process.env.BACKEND_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL;
 }
 
-async function loadState(): Promise<{ state: BandGateState; source: StateSource }> {
+async function loadState(): Promise<BandGateState | null> {
   const baseUrl = backendBaseUrl();
-  if (!baseUrl) {
-    return { state: mockState, source: "demo" };
-  }
+  if (!baseUrl) return null;
   try {
     const response = await fetch(`${baseUrl}/state`, { cache: "no-store" });
-    if (!response.ok) {
-      return { state: mockState, source: "fallback" };
-    }
-    return { state: (await response.json()) as BandGateState, source: "live" };
+    if (!response.ok) return null;
+    return (await response.json()) as BandGateState;
   } catch {
-    return { state: mockState, source: "fallback" };
+    return null;
   }
 }
 
@@ -59,15 +53,18 @@ async function loadBandReport(): Promise<string> {
 }
 
 export default async function Home() {
-  const [{ state, source }, bandEvents, bandReport] = await Promise.all([
+  const [state, bandEvents, bandReport] = await Promise.all([
     loadState(),
     loadBandEvents(),
     loadBandReport(),
   ]);
+  if (!state || Object.keys(state.questions).length === 0) {
+    return <EmptyWorkspace offline={!state} />;
+  }
   return (
     <Dashboard
       state={state}
-      source={source}
+      source="live"
       bandEvents={bandEvents}
       bandReport={bandReport}
       publicBackendUrl={process.env.NEXT_PUBLIC_BACKEND_URL ?? ""}
