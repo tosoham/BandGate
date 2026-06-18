@@ -1,12 +1,15 @@
 import Link from "next/link";
 
 import LiveRoomPanel from "../../../components/LiveRoomPanel";
+import RoomChatList, { type ChatItem } from "../../../components/RoomChatList";
 import { fetchState } from "../../../lib/api";
 import type { AgentOpinion } from "../../../lib/types";
 
 function riskClass(risk: string) {
   return `risk risk-${risk}`;
 }
+
+const RISK_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 type Params = { questionId: string };
 
@@ -32,6 +35,15 @@ export default async function ReviewPage({ params }: { params: Promise<Params> }
   }
 
   const rfpId = state?.rfp_id ?? "RFP-GOV-001";
+  const chatItems: ChatItem[] = Object.values(state?.questions ?? {})
+    .map((q) => ({
+      id: q.question_id,
+      question: q.raw_question,
+      status: q.status,
+      risk: q.risk_level,
+      tags: q.risk_tags,
+    }))
+    .sort((a, b) => (RISK_ORDER[a.risk] ?? 9) - (RISK_ORDER[b.risk] ?? 9));
 
   return (
     <>
@@ -49,8 +61,10 @@ export default async function ReviewPage({ params }: { params: Promise<Params> }
           </div>
         </header>
 
-        <section className="reviewLayout">
-          <aside className="reviewAside">
+        <div className="roomLayout">
+          <RoomChatList items={chatItems} activeId={question.question_id} />
+          <section className="reviewLayout">
+            <aside className="reviewAside">
             <article className="reviewPanel">
               <h3>Conflict</h3>
               <p>{question.conflict_summary ?? "No conflict yet."}</p>
@@ -107,12 +121,14 @@ export default async function ReviewPage({ params }: { params: Promise<Params> }
               </ul>
             </article>
           </aside>
-          <LiveRoomPanel
-            questionId={question.question_id}
-            rfpId={rfpId}
-            publicBackendUrl={publicBackendUrl}
-          />
-        </section>
+            <LiveRoomPanel
+              questionId={question.question_id}
+              rfpId={rfpId}
+              publicBackendUrl={publicBackendUrl}
+              initialStatus={question.status}
+            />
+          </section>
+        </div>
       </main>
     </>
   );

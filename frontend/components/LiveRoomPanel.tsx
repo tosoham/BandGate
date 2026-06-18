@@ -15,7 +15,16 @@ type Props = {
   publicBackendUrl: string;
   onDecide?: (decision: GateDecision, role: string, finalAnswer?: string) => void;
   recommended?: string;
+  initialStatus?: string;
 };
+
+// A question that has already reached one of these statuses has a recorded
+// human decision — the gate buttons lock so the same call can't be made twice.
+function decisionFromStatus(status?: string): GateDecision | null {
+  if (status === "finalized" || status === "approved") return "approved";
+  if (status === "rejected") return "rejected";
+  return null;
+}
 
 const ROOM_KEY = (rfpId: string) => rfpId || "demo-room";
 
@@ -50,12 +59,16 @@ export default function LiveRoomPanel({
   publicBackendUrl,
   onDecide,
   recommended,
+  initialStatus,
 }: Props) {
   const [events, setEvents] = useState<BandEventRecord[]>([]);
   const [draft, setDraft] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  // Terminal human decision for this question — locks the gate to prevent
+  // double-approve. Seeded from server status, then set when you decide here.
+  const [decided, setDecided] = useState<GateDecision | null>(decisionFromStatus(initialStatus));
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mentionRef = useRef<HTMLDivElement | null>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -152,12 +165,15 @@ export default function LiveRoomPanel({
       final_answer: finalAnswer,
     });
     setBusy(false);
+    if (ok) setDecided(decision);
     setFeedback(
       `${decision.replaceAll("_", " ")}${role ? ` · ${role}` : ""} recorded${ok ? " + posted" : ""}.`,
     );
     setDraft("");
     setMentions([]);
   }
+
+  const locked = decided !== null;
 
   const lastEvent = events[events.length - 1];
 
@@ -302,7 +318,7 @@ export default function LiveRoomPanel({
               type="button"
               className="gateBtn gateBtn-approve"
               onClick={() => gate("approved", "Legal")}
-              disabled={busy}
+              disabled={busy || locked}
             >
               <Icon name="approve" size={15} />
               Approve
@@ -311,7 +327,7 @@ export default function LiveRoomPanel({
               type="button"
               className="gateBtn gateBtn-edit"
               onClick={() => gate("approved_with_edits", "Legal")}
-              disabled={busy}
+              disabled={busy || locked}
             >
               <Icon name="check" size={15} />
               Approve with edits
@@ -320,7 +336,7 @@ export default function LiveRoomPanel({
               type="button"
               className="gateBtn gateBtn-escalate"
               onClick={() => gate("escalated", "Legal")}
-              disabled={busy}
+              disabled={busy || locked}
             >
               <Icon name="flag" size={15} />
               Escalate
@@ -329,7 +345,7 @@ export default function LiveRoomPanel({
               type="button"
               className="gateBtn gateBtn-escalate-sec"
               onClick={() => gate("escalated", "Security")}
-              disabled={busy}
+              disabled={busy || locked}
             >
               <Icon name="shield" size={15} />
               Escalate → Security
@@ -338,13 +354,19 @@ export default function LiveRoomPanel({
               type="button"
               className="gateBtn gateBtn-reject"
               onClick={() => gate("rejected", "Legal")}
-              disabled={busy}
+              disabled={busy || locked}
             >
               <Icon name="block" size={15} />
               Reject
             </button>
           </div>
         </div>
+        {decided ? (
+          <p className={`gateDecided gateDecided-${decided}`}>
+            <span className="gateDecidedDot" aria-hidden />
+            Decision recorded: <strong>{decided.replaceAll("_", " ")}</strong> — gate locked (no double-submit).
+          </p>
+        ) : null}
         {feedback ? <p className="liveFeedback">{feedback}</p> : null}
       </footer>
     </section>
