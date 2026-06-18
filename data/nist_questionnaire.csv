@@ -1,0 +1,37 @@
+question_id,category,question
+NIST-001,security|access_control,Describe how your platform satisfies the Policy and Procedures requirement (NIST AC-1).
+NIST-002,security|access_control,How does your organization implement Account Management? (maps to NIST AC-2)
+NIST-003,security|access_control,"What controls do you have in place for Access Enforcement, per NIST AC-3?"
+NIST-004,security|access_control,Describe how your platform satisfies the Information Flow Enforcement requirement (NIST AC-4).
+NIST-005,security|access_control,How does your organization implement Separation of Duties? (maps to NIST AC-5)
+NIST-006,security|access_control,"What controls do you have in place for Least Privilege, per NIST AC-6?"
+NIST-007,security|access_control,Describe how your platform satisfies the Unsuccessful Logon Attempts requirement (NIST AC-7).
+NIST-008,security|access_control,How does your organization implement System Use Notification? (maps to NIST AC-8)
+NIST-009,security|access_control,"What controls do you have in place for Previous Logon Notification, per NIST AC-9?"
+NIST-010,security|access_control,Describe how your platform satisfies the Concurrent Session Control requirement (NIST AC-10).
+NIST-011,security|access_control,How does your organization implement Device Lock? (maps to NIST AC-11)
+NIST-012,security|access_control,"What controls do you have in place for Session Termination, per NIST AC-12?"
+NIST-013,security|access_control,Describe how your platform satisfies the Permitted Actions Without Identification or Authentication requirement (NIST AC-14).
+NIST-014,security|access_control,How does your organization implement Security and Privacy Attributes? (maps to NIST AC-16)
+NIST-015,security|access_control,"What controls do you have in place for Remote Access, per NIST AC-17?"
+NIST-016,security|access_control,Describe how your platform satisfies the Wireless Access requirement (NIST AC-18).
+NIST-017,security|access_control,How does your organization implement Access Control for Mobile Devices? (maps to NIST AC-19)
+NIST-018,security|access_control,"What controls do you have in place for Use of External Systems, per NIST AC-20?"
+NIST-019,security|access_control,Describe how your platform satisfies the Information Sharing requirement (NIST AC-21).
+NIST-020,security|access_control,How does your organization implement Publicly Accessible Content? (maps to NIST AC-22)
+NIST-021,security|access_control,"What controls do you have in place for Data Mining Protection, per NIST AC-23?"
+NIST-022,security|access_control,Describe how your platform satisfies the Access Control Decisions requirement (NIST AC-24).
+NIST-023,security|access_control,How does your organization implement Reference Monitor? (maps to NIST AC-25)
+NIST-024,security|audit,"What controls do you have in place for Policy and Procedures, per NIST AU-1?"
+NIST-025,security|audit,Describe how your platform satisfies the Event Logging requirement (NIST AU-2).
+NIST-026,security|audit,How does your organization implement Content of Audit Records? (maps to NIST AU-3)
+NIST-027,security|audit,"What controls do you have in place for Audit Log Storage Capacity, per NIST AU-4?"
+NIST-028,security|audit,Describe how your platform satisfies the Response to Audit Logging Process Failures requirement (NIST AU-5).
+NIST-029,security|audit,"How does your organization implement Audit Record Review, Analysis, and Reporting? (maps to NIST AU-6)"
+NIST-030,security|audit,"What controls do you have in place for Audit Record Reduction and Report Generation, per NIST AU-7?"
+NIST-031,security|audit,Describe how your platform satisfies the Time Stamps requirement (NIST AU-8).
+NIST-032,security|audit,How does your organization implement Protection of Audit Information? (maps to NIST AU-9)
+NIST-033,security|audit,"What controls do you have in place for Non-repudiation, per NIST AU-10?"
+NIST-034,security|audit,Describe how your platform satisfies the Audit Record Retention requirement (NIST AU-11).
+NIST-035,security|audit,How does your organization implement Audit Record Generation? (maps to NIST AU-12)
+NIST-036,security|audit,"What controls do you have in place for Monitoring for Information Disclosure, per NIST AU-13?"
