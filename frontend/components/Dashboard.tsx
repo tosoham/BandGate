@@ -12,6 +12,7 @@ import PolicyDecisionPanel from "./PolicyDecisionPanel";
 import AdversarialReviewPanel from "./AdversarialReviewPanel";
 import PromiseLedger from "./PromiseLedger";
 import LiveRoomPanel from "./LiveRoomPanel";
+import { Logo } from "./Logo";
 import type {
   AgentOpinion,
   BandEventRecord,
@@ -70,6 +71,20 @@ function confidencePct(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function eventTime(ts: string) {
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+const ROOM_AGENTS = [
+  { keys: ["intake", "intake_coordinator", "intake_risk"], label: "Intake", role: "Triages & routes risk", defaultProvider: "aiml" },
+  { keys: ["sales_engineer"], label: "Sales", role: "Drafts the answer", defaultProvider: "aiml" },
+  { keys: ["security_compliance"], label: "Security", role: "Cites controls & evidence", defaultProvider: "aiml" },
+  { keys: ["product_capability"], label: "Product", role: "Validates capabilities", defaultProvider: "aiml" },
+  { keys: ["legal_commitment_guard"], label: "Legal", role: "Guards commitments", defaultProvider: "aiml" },
+  { keys: ["adversarial_reviewer"], label: "Adversarial", role: "Red-teams every claim", defaultProvider: "featherless" },
+] as const;
+
 type AnswerState = { label: string; kind: "attack" | "conflict" | "ok"; detail: string; icon: IconName };
 
 function answerState(question: RFPQuestionState): AnswerState {
@@ -118,10 +133,6 @@ function recommendedAnswer(question: RFPQuestionState): string {
     (opinion) => opinion.risk_tags.includes("supported_by_evidence") && opinion.evidence.length > 0,
   );
   return evidenceBacked?.answer ?? question.opinions[0]?.answer ?? "";
-}
-
-function ShieldMark() {
-  return <Icon name="shield" size={22} />;
 }
 
 function NavItem({
@@ -319,6 +330,24 @@ export default function Dashboard({
   const score = Math.round(rawScore <= 1 ? rawScore * 100 : rawScore);
   const posture = postureBand(score);
 
+  // ---- Overview: agent roster, AI activity, and live room preview ----
+  const allOpinions = questions.flatMap((q) => q.opinions);
+  function agentStat(keys: readonly string[]) {
+    const ops = allOpinions.filter((o) => keys.includes(o.agent_name));
+    return { count: ops.length, provider: ops.find((o) => o.provider)?.provider };
+  }
+  let aimlCalls = 0;
+  let featherlessCalls = 0;
+  let evidenceCalls = 0;
+  for (const o of allOpinions) {
+    const p = (o.provider ?? "").toLowerCase();
+    if (o.agent_name === "adversarial_reviewer" || p.includes("featherless")) featherlessCalls += 1;
+    else if (p.includes("aiml")) aimlCalls += 1;
+    evidenceCalls += o.evidence.length;
+  }
+  const roomTurns = bandEvents.length;
+  const recentEvents = [...bandEvents].slice(-4).reverse();
+
   const NAV_TOP: { id: View; label: string; icon: IconName }[] = [
     { id: "overview", label: "Overview", icon: "home" },
   ];
@@ -379,7 +408,7 @@ export default function Dashboard({
       <aside className="sidebar">
         <div className="brand">
           <span className="brandMark">
-            <ShieldMark />
+            <Logo size={24} />
           </span>
           <div>
             <span className="brandName">BandGate</span>
@@ -424,6 +453,16 @@ export default function Dashboard({
             <span className="dot" /> AI/ML · {liveProvider ? state.provider_mode : "mock"}
           </span>
           <span className="policyVer">policy v{state.policy_version}</span>
+          <form action="/api/auth/logout" method="post" className="navLogout">
+            <button type="submit">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sign out
+            </button>
+          </form>
         </div>
       </aside>
 
@@ -512,6 +551,97 @@ export default function Dashboard({
                 <span className="statLabel">Critical</span>
               </div>
             </section>
+
+            <section className="roomRoster" aria-label="Agent room">
+              <div className="sectionTitle">
+                <h2>The Room</h2>
+                <span>Six agents · AI/ML proposes, policy disposes</span>
+              </div>
+              <div className="roster">
+                {ROOM_AGENTS.map((a) => {
+                  const stat = agentStat(a.keys);
+                  const provider = (stat.provider ?? a.defaultProvider).toLowerCase();
+                  const tag = provider.includes("featherless") ? "featherless" : "aiml";
+                  const active = stat.count > 0;
+                  return (
+                    <div key={a.label} className="agentCard">
+                      <div className="agentCardHead">
+                        <span className={`agentDot${active ? " agentDotLive" : ""}`} />
+                        <span className="agentName">{a.label}</span>
+                      </div>
+                      <p className="agentRole">{a.role}</p>
+                      <div className="agentMeta">
+                        <span className={`provBadge prov-${tag}`}>{tag}</span>
+                        {active && (
+                          <span className="agentCalls">
+                            {stat.count} {stat.count === 1 ? "turn" : "turns"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <div className="overviewSplit">
+              <section className="livePreviewCard" aria-label="Live deliberation">
+                <div className="sectionTitle">
+                  <h2>Live deliberation</h2>
+                  <button type="button" className="linkCta" onClick={() => setView("bandroom")}>
+                    View live room <Icon name="chevron" size={14} />
+                  </button>
+                </div>
+                {recentEvents.length > 0 ? (
+                  <ul className="liveFeed">
+                    {recentEvents.map((ev, i) => (
+                      <li key={`${ev.timestamp}-${i}`} className="liveFeedItem">
+                        <span className="feedAvatar">{agentCode(ev.agent)}</span>
+                        <div className="feedBody">
+                          <div className="feedTop">
+                            <span className="feedAgent">{agentLabel(ev.agent)}</span>
+                            {ev.risk_level && <span className={riskClass(ev.risk_level)}>{ev.risk_level}</span>}
+                            <span className="feedTime" suppressHydrationWarning>{eventTime(ev.timestamp)}</span>
+                          </div>
+                          <p className="feedSummary">{ev.summary}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="emptyState">
+                    No room activity yet. Run a deliberation to watch the agents talk here.
+                  </p>
+                )}
+              </section>
+
+              <section className="aiUsageCard" aria-label="AI activity">
+                <div className="sectionTitle">
+                  <h2>AI activity</h2>
+                  <span className={`providerPill ${liveProvider ? "provider-live" : "provider-mock"}`}>
+                    <span className="dot" /> {liveProvider ? state.provider_mode : "mock"}
+                  </span>
+                </div>
+                <div className="usageGrid">
+                  <div className="usageStat">
+                    <span className="usageValue">{aimlCalls}</span>
+                    <span className="usageLabel">AI/ML reasoning</span>
+                  </div>
+                  <div className="usageStat">
+                    <span className="usageValue">{featherlessCalls}</span>
+                    <span className="usageLabel">Adversarial reviews</span>
+                  </div>
+                  <div className="usageStat">
+                    <span className="usageValue">{evidenceCalls}</span>
+                    <span className="usageLabel">Evidence retrieved</span>
+                  </div>
+                  <div className="usageStat">
+                    <span className="usageValue">{roomTurns}</span>
+                    <span className="usageLabel">Room turns</span>
+                  </div>
+                </div>
+              </section>
+            </div>
           </>
         )}
 

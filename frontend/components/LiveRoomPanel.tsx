@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import Icon from "./Icon";
 import { ALL_AGENT_NAMES, postHumanMessage, startDeliberation } from "../lib/api";
 import { subscribeToRoom } from "../lib/sse";
 import type { BandEventRecord, HumanGateAction } from "../lib/types";
@@ -17,6 +18,9 @@ type Props = {
 };
 
 const ROOM_KEY = (rfpId: string) => rfpId || "demo-room";
+
+// You ARE the human gate — only the AI agents are mentionable.
+const MENTIONABLE_AGENTS = ALL_AGENT_NAMES.filter((name) => name !== "human_gate");
 
 const AGENT_DISPLAY: Record<string, { label: string; tone: string }> = {
   intake_agent: { label: "Intake Agent", tone: "agent-blue" },
@@ -53,11 +57,25 @@ export default function LiveRoomPanel({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const mentionRef = useRef<HTMLDivElement | null>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionIndex, setMentionIndex] = useState(0);
   const roomId = useMemo(() => ROOM_KEY(rfpId), [rfpId]);
+
+  function toggleMention(agent: string) {
+    setMentions((prev) => (prev.includes(agent) ? prev.filter((a) => a !== agent) : [...prev, agent]));
+  }
+
+  // Close the mention dropdown when clicking outside of it.
+  useEffect(() => {
+    if (!mentionOpen) return;
+    function onClick(e: MouseEvent) {
+      if (mentionRef.current && !mentionRef.current.contains(e.target as Node)) {
+        setMentionOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [mentionOpen]);
 
   useEffect(() => {
     if (!publicBackendUrl) return;
@@ -141,47 +159,6 @@ export default function LiveRoomPanel({
     setMentions([]);
   }
 
-  const mentionMatches = mentionOpen
-    ? ALL_AGENT_NAMES.filter((name) => {
-        const label = AGENT_DISPLAY[name]?.label ?? name;
-        return (
-          name.toLowerCase().includes(mentionQuery) ||
-          label.toLowerCase().includes(mentionQuery)
-        );
-      })
-    : [];
-
-  function handleDraftChange(value: string, caret: number) {
-    setDraft(value);
-    // Open the typeahead when the word right before the caret starts with "@"
-    // (preceded by start-of-line or whitespace, so emails like a@b don't trigger).
-    const match = /(?:^|\s)@([\w-]*)$/.exec(value.slice(0, caret));
-    if (match) {
-      setMentionQuery(match[1].toLowerCase());
-      setMentionOpen(true);
-      setMentionIndex(0);
-    } else {
-      setMentionOpen(false);
-    }
-  }
-
-  function applyMention(agent: string) {
-    const label = AGENT_DISPLAY[agent]?.label ?? agent;
-    const caret = textareaRef.current?.selectionStart ?? draft.length;
-    const before = draft.slice(0, caret).replace(/(^|\s)@([\w-]*)$/, `$1@${label} `);
-    const after = draft.slice(caret);
-    setDraft(before + after);
-    setMentions((prev) => (prev.includes(agent) ? prev : [...prev, agent]));
-    setMentionOpen(false);
-    requestAnimationFrame(() => {
-      const node = textareaRef.current;
-      if (node) {
-        node.focus();
-        node.selectionStart = node.selectionEnd = before.length;
-      }
-    });
-  }
-
   const lastEvent = events[events.length - 1];
 
   return (
@@ -191,7 +168,7 @@ export default function LiveRoomPanel({
           <h2>Live Band Room</h2>
           <p>
             Room: <code>{roomId}</code>
-            {lastEvent ? <> · last event {new Date(lastEvent.timestamp).toLocaleTimeString()}</> : null}
+            {lastEvent ? <> · last event <span suppressHydrationWarning>{new Date(lastEvent.timestamp).toLocaleTimeString()}</span></> : null}
           </p>
         </div>
         <div className="livePanelActions">
@@ -234,109 +211,139 @@ export default function LiveRoomPanel({
         )}
       </div>
       <footer className="liveComposer">
-        <div className="mentionWrap">
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(e) =>
-              handleDraftChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
-            }
-            onKeyDown={(e) => {
-              if (!mentionOpen || mentionMatches.length === 0) return;
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setMentionIndex((i) => (i + 1) % mentionMatches.length);
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setMentionIndex((i) => (i - 1 + mentionMatches.length) % mentionMatches.length);
-              } else if (e.key === "Enter" || e.key === "Tab") {
-                e.preventDefault();
-                applyMention(mentionMatches[mentionIndex]);
-              } else if (e.key === "Escape") {
-                setMentionOpen(false);
-              }
-            }}
-            placeholder="Type a message, @mention an agent, then approve / push back / escalate…"
-            rows={2}
-          />
-          {mentionOpen && mentionMatches.length > 0 ? (
-            <ul className="mentionMenu" role="listbox">
-              {mentionMatches.map((agent, i) => (
-                <li
-                  key={agent}
-                  role="option"
-                  aria-selected={i === mentionIndex}
-                  className={i === mentionIndex ? "mentionItem mentionItemActive" : "mentionItem"}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyMention(agent);
-                  }}
+        <textarea
+          className="composerInput"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Type a message to the room, tag the agents you want to reach, then approve / push back / escalate…"
+          rows={2}
+        />
+
+        <div className="mentionBar" ref={mentionRef}>
+          <button
+            type="button"
+            className={`mentionToggle${mentionOpen ? " mentionToggleOpen" : ""}`}
+            aria-expanded={mentionOpen}
+            onClick={() => setMentionOpen((o) => !o)}
+          >
+            <span className="mentionToggleAt">@</span>
+            Tag agents
+            {mentions.length > 0 ? <span className="mentionCount">{mentions.length}</span> : null}
+            <span className="mentionCaret" aria-hidden>
+              ▾
+            </span>
+          </button>
+
+          {mentions.length > 0 ? (
+            <div className="mentionChips">
+              {mentions.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className="mentionChip"
+                  onClick={() => toggleMention(m)}
+                  title="Remove mention"
                 >
                   <span
                     className="mentionDot"
-                    style={{
-                      backgroundColor: TONE_COLOR[AGENT_DISPLAY[agent]?.tone ?? ""] ?? "#bd5a3c",
-                    }}
+                    style={{ backgroundColor: TONE_COLOR[AGENT_DISPLAY[m]?.tone ?? ""] ?? "#bd5a3c" }}
                   />
-                  <span className="mentionName">{AGENT_DISPLAY[agent]?.label ?? agent}</span>
-                </li>
+                  {AGENT_DISPLAY[m]?.label ?? m}
+                  <span className="mentionChipX" aria-hidden>
+                    ×
+                  </span>
+                </button>
               ))}
-            </ul>
+            </div>
+          ) : null}
+
+          {mentionOpen ? (
+            <div className="mentionPop" role="listbox" aria-label="Tag agents">
+              <span className="mentionPopHead">Tap to tag · tap again to remove</span>
+              <div className="mentionTagGrid">
+                {MENTIONABLE_AGENTS.map((agent) => {
+                  const selected = mentions.includes(agent);
+                  return (
+                    <button
+                      key={agent}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={`mentionTag${selected ? " mentionTagSelected" : ""}`}
+                      onClick={() => toggleMention(agent)}
+                    >
+                      <span
+                        className="mentionDot"
+                        style={{
+                          backgroundColor: TONE_COLOR[AGENT_DISPLAY[agent]?.tone ?? ""] ?? "#bd5a3c",
+                        }}
+                      />
+                      {AGENT_DISPLAY[agent]?.label ?? agent}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
         </div>
-        {mentions.length > 0 ? (
-          <div className="mentionChips">
-            {mentions.map((m) => (
-              <span key={m} className="mentionChip">
-                @{AGENT_DISPLAY[m]?.label ?? m}
-              </span>
-            ))}
+
+        <div className="gateBar">
+          <button
+            type="button"
+            className="gateBtn gateBtn-comment"
+            onClick={sendComment}
+            disabled={busy}
+          >
+            <Icon name="review" size={15} />
+            Post comment
+          </button>
+          <div className="gateDecisions">
+            <button
+              type="button"
+              className="gateBtn gateBtn-approve"
+              onClick={() => gate("approved", "Legal")}
+              disabled={busy}
+            >
+              <Icon name="approve" size={15} />
+              Approve
+            </button>
+            <button
+              type="button"
+              className="gateBtn gateBtn-edit"
+              onClick={() => gate("approved_with_edits", "Legal")}
+              disabled={busy}
+            >
+              <Icon name="check" size={15} />
+              Approve with edits
+            </button>
+            <button
+              type="button"
+              className="gateBtn gateBtn-escalate"
+              onClick={() => gate("escalated", "Legal")}
+              disabled={busy}
+            >
+              <Icon name="flag" size={15} />
+              Escalate
+            </button>
+            <button
+              type="button"
+              className="gateBtn gateBtn-escalate-sec"
+              onClick={() => gate("escalated", "Security")}
+              disabled={busy}
+            >
+              <Icon name="shield" size={15} />
+              Escalate → Security
+            </button>
+            <button
+              type="button"
+              className="gateBtn gateBtn-reject"
+              onClick={() => gate("rejected", "Legal")}
+              disabled={busy}
+            >
+              <Icon name="block" size={15} />
+              Reject
+            </button>
           </div>
-        ) : null}
-        <div className="gateActions">
-          <button type="button" className="btn btn-ghost" onClick={sendComment} disabled={busy}>
-            Comment
-          </button>
-          <button
-            type="button"
-            className="btn btn-approve"
-            onClick={() => gate("approved", "Legal")}
-            disabled={busy}
-          >
-            Approve
-          </button>
-          <button
-            type="button"
-            className="btn btn-edit"
-            onClick={() => gate("approved_with_edits", "Legal")}
-            disabled={busy}
-          >
-            Approve w/ edits
-          </button>
-          <button
-            type="button"
-            className="btn btn-escalate"
-            onClick={() => gate("escalated", "Legal")}
-            disabled={busy}
-          >
-            Escalate
-          </button>
-          <button
-            type="button"
-            className="btn btn-escalate-sec"
-            onClick={() => gate("escalated", "Security")}
-            disabled={busy}
-          >
-            Escalate → Security
-          </button>
-          <button
-            type="button"
-            className="btn btn-reject"
-            onClick={() => gate("rejected", "Legal")}
-            disabled={busy}
-          >
-            Reject
-          </button>
         </div>
         {feedback ? <p className="liveFeedback">{feedback}</p> : null}
       </footer>
