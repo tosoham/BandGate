@@ -255,12 +255,14 @@ class LiveOrchestrator:
     async def _round_one_if_needed(self, question: RFPQuestionState, round_no: int) -> None:
         if round_no != 1:
             return
-        # Sales drafts.
-        sales = draft_answer(question.raw_question, question.risk_tags)
+        # Sales drafts. Agent calls are synchronous (blocking HTTP to the
+        # providers), so run them in a worker thread to keep the event loop
+        # responsive while a model is thinking.
+        sales = await asyncio.to_thread(draft_answer, question.raw_question, question.risk_tags)
         question.opinions.append(sales)
         await self._post_opinion(question, sales, round_no=1)
         # Security retrieves + reasons.
-        security = answer_from_evidence(question.normalized_question)
+        security = await asyncio.to_thread(answer_from_evidence, question.normalized_question)
         question.opinions.append(security)
         await self._post_opinion(question, security, round_no=1)
         # Product when assigned, or whenever risk tags imply capability gating.
@@ -268,11 +270,11 @@ class LiveOrchestrator:
             tag.startswith("capability_") or tag == "sla_overcommitment"
             for tag in question.risk_tags
         ):
-            product = assess_capability(question.normalized_question)
+            product = await asyncio.to_thread(assess_capability, question.normalized_question)
             question.opinions.append(product)
             await self._post_opinion(question, product, round_no=1)
         # Legal policy review.
-        legal = review_commitment(question, self.policy)
+        legal = await asyncio.to_thread(review_commitment, question, self.policy)
         question.opinions.append(legal)
         await self._post_opinion(question, legal, round_no=1)
         question.status = "evidence_review"
@@ -302,7 +304,8 @@ class LiveOrchestrator:
             return human_note if agent in mentioned else None
 
         if "sales_engineer" in targets:
-            refreshed = draft_answer(
+            refreshed = await asyncio.to_thread(
+                draft_answer,
                 question.raw_question,
                 question.risk_tags,
                 human_note=note_for("sales_engineer"),
@@ -311,7 +314,8 @@ class LiveOrchestrator:
             question.opinions.append(refreshed)
             await self._post_opinion(question, refreshed, round_no=round_no, prefix="Rebuttal")
         if "security_compliance" in targets:
-            refreshed = answer_from_evidence(
+            refreshed = await asyncio.to_thread(
+                answer_from_evidence,
                 question.normalized_question,
                 human_note=note_for("security_compliance"),
             )
@@ -319,7 +323,8 @@ class LiveOrchestrator:
             question.opinions.append(refreshed)
             await self._post_opinion(question, refreshed, round_no=round_no, prefix="Rebuttal")
         if "product_capability" in targets:
-            refreshed = assess_capability(
+            refreshed = await asyncio.to_thread(
+                assess_capability,
                 question.normalized_question,
                 human_note=note_for("product_capability"),
             )
@@ -329,7 +334,7 @@ class LiveOrchestrator:
         if "legal_commitment_guard" in targets:
             # Legal is the hard policy gate — it re-asserts policy and never
             # bends to a reviewer note, so no human_note is threaded in.
-            refreshed = review_commitment(question, self.policy)
+            refreshed = await asyncio.to_thread(review_commitment, question, self.policy)
             refreshed.risk_tags = sorted(set(refreshed.risk_tags + ["rebuttal"]))
             question.opinions.append(refreshed)
             await self._post_opinion(question, refreshed, round_no=round_no, prefix="Rebuttal")
@@ -337,7 +342,7 @@ class LiveOrchestrator:
     async def _run_adversarial_round(self, question: RFPQuestionState, round_no: int) -> AgentOpinion:
         question.final_answer = self._choose_final_answer(question)
         question.status = "adversarial_review"
-        adversarial = red_team_answer(question)
+        adversarial = await asyncio.to_thread(red_team_answer, question)
         adversarial.risk_tags = sorted(set(adversarial.risk_tags + [f"round_{round_no}"]))
         question.opinions.append(adversarial)
         await self._post_opinion(question, adversarial, round_no=round_no)
