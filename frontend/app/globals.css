@@ -3832,3 +3832,45 @@ button {
   .roomLayout { grid-template-columns: 1fr; }
   .roomChatList { position: static; max-height: 280px; }
 }
+
+/* ---- Pipeline control (header Stop/Start button) ---- */
+.pipelineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.pipelineBtn:disabled { opacity: 0.6; cursor: progress; }
+.pipelineBtn-stop {
+  color: #fff;
+  background: var(--r-critical);
+  border-color: color-mix(in srgb, var(--r-critical) 70%, #000);
+}
+.pipelineBtn-stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--r-critical) 85%, #000);
+}
+.pipelineBtn-start {
+  color: var(--clay-ink);
+  background: var(--clay-bg);
+  border-color: var(--clay-soft);
+}
+.pipelineBtn-start:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--clay-bg) 80%, var(--clay));
+}
+.pipelineDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pipelinePulse 1.1s ease-in-out infinite;
+}
+@keyframes pipelinePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

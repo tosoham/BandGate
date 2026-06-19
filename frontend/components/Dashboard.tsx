@@ -8,6 +8,7 @@ import BandRoom from "./BandRoom";
 import RiskDashboard from "./RiskDashboard";
 import ExportBar from "./ExportBar";
 import DemoReset from "./DemoReset";
+import PipelineControl from "./PipelineControl";
 import PolicyDecisionPanel from "./PolicyDecisionPanel";
 import AdversarialReviewPanel from "./AdversarialReviewPanel";
 import PromiseLedger from "./PromiseLedger";
@@ -528,8 +529,9 @@ export default function Dashboard({
             </div>
           )}
           <div className="headChips">
-            <span className="idChip">{state.rfp_id}</span>
+            <span className="idChip">{live.rfp_id}</span>
             {source !== "live" && <span className="demoChip">demo data</span>}
+            <PipelineControl publicBackendUrl={publicBackendUrl} />
             <DemoReset />
           </div>
         </header>
