@@ -9,6 +9,7 @@ export default function PipelineControl({ publicBackendUrl }: { publicBackendUrl
   const base = (publicBackendUrl ?? "").replace(/\/+$/, "");
   const [running, setRunning] = useState(false);
   const [questions, setQuestions] = useState(0);
+  const [pending, setPending] = useState(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -18,10 +19,11 @@ export default function PipelineControl({ publicBackendUrl }: { publicBackendUrl
       try {
         const res = await fetch(`${base}/pipeline/status`, { cache: "no-store" });
         if (!res.ok || !alive) return;
-        const data = (await res.json()) as { running?: boolean; questions?: number };
+        const data = (await res.json()) as { running?: boolean; questions?: number; pending?: number };
         if (!alive) return;
         setRunning(Boolean(data.running));
         setQuestions(data.questions ?? 0);
+        setPending(data.pending ?? data.questions ?? 0);
       } catch {
         /* transient */
       }
@@ -62,16 +64,22 @@ export default function PipelineControl({ publicBackendUrl }: { publicBackendUrl
     );
   }
 
-  if (questions > 0) {
+  // Idle. If some questions are already resolved, offer to resume the rest.
+  if (pending > 0) {
+    const resume = pending < questions;
     return (
       <button
         type="button"
         className="pipelineBtn pipelineBtn-start"
         onClick={() => post("/pipeline/start", true)}
         disabled={busy}
-        title="Run the deliberation pipeline across all loaded questions"
+        title={
+          resume
+            ? "Resume the pipeline on the remaining questions (skips ones already resolved)"
+            : "Run the deliberation pipeline across all loaded questions"
+        }
       >
-        {busy ? "Starting…" : "Start pipeline"}
+        {busy ? "Starting…" : resume ? `Resume pipeline · ${pending} left` : "Start pipeline"}
       </button>
     );
   }

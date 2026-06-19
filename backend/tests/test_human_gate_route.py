@@ -20,7 +20,10 @@ from core.state_store import reset_state
 pytestmark = pytest.mark.skipif(TestClient is None, reason="httpx not installed for TestClient")
 
 
-def test_human_message_routes_to_orchestrator() -> None:
+def test_human_message_routes_to_orchestrator(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Live boot starts empty; demo boot loads the questionnaire so there's a
+    # question to route a human decision to.
+    monkeypatch.setenv("BANDGATE_BOOT_MODE", "demo")
     reset_state()
     orchestrator_store.reset_orchestrator()
     orch = orchestrator_store.get_orchestrator()

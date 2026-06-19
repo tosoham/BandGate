@@ -112,7 +112,14 @@ export default function LiveRoomPanel({
     setBusy(true);
     setFeedback(null);
     const ok = await startDeliberation(questionId);
-    setFeedback(ok ? "Deliberation started." : "Could not start deliberation.");
+    if (ok) {
+      // A fresh round re-opens the question: unlock the gate so you can decide
+      // again after the agents talk (rebuttals included).
+      setDecided(null);
+      setFeedback(decided ? "New round started — agents are re-deliberating." : "Deliberation started.");
+    } else {
+      setFeedback("Could not start deliberation.");
+    }
     setBusy(false);
   }
 
@@ -189,7 +196,7 @@ export default function LiveRoomPanel({
         </div>
         <div className="livePanelActions">
           <button type="button" onClick={handleStartDeliberation} disabled={busy}>
-            Start deliberation
+            {decided ? "New round of deliberation" : "Start deliberation"}
           </button>
         </div>
       </header>

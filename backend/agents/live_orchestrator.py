@@ -36,6 +36,9 @@ from core.schemas import AgentOpinion, Approval, BandGateState, PolicyViolation,
 DEFAULT_MAX_ROUNDS = 5
 HUMAN_GATE = "human_gate"
 
+# A question in one of these states is not re-run by the pipeline (resume support).
+_RESOLVED_STATUSES = {"finalized", "approved", "human_review"}
+
 # Agents that can produce a fresh turn when the adversarial reviewer flags them
 # or the human gate directs them with an @mention. intake_agent and
 # adversarial_reviewer have no redraft path at the gate, so a mention of either
@@ -136,6 +139,10 @@ class LiveOrchestrator:
     def pipeline_running(self) -> bool:
         return self._pipeline_task is not None and not self._pipeline_task.done()
 
+    def pending_count(self) -> int:
+        """Questions still awaiting the pipeline (not resolved or at the gate)."""
+        return sum(1 for q in self.state.questions.values() if q.status not in _RESOLVED_STATUSES)
+
     def start_pipeline(self) -> bool:
         """Kick a background task that deliberates every question sequentially.
 
@@ -163,14 +170,20 @@ class LiveOrchestrator:
             payload={"count": len(question_ids), "queue": question_ids[:50]},
         )
         try:
+            total = len(question_ids)
             for index, qid in enumerate(question_ids, start=1):
+                question = self.state.questions.get(qid)
+                # Resume support: don't re-deliberate questions that are already
+                # resolved (finalized/approved) or waiting at the human gate.
+                if question is None or question.status in _RESOLVED_STATUSES:
+                    continue
                 await self.publisher.post(
                     "orchestrator",
-                    f"Queue {index}/{len(question_ids)} · deliberating {qid}.",
+                    f"Queue {index}/{total} · deliberating {qid}.",
                     rfp_id=self.state.rfp_id,
                     question_id=qid,
                     event_type="pipeline_progress",
-                    payload={"index": index, "total": len(question_ids), "question_id": qid},
+                    payload={"index": index, "total": total, "question_id": qid},
                 )
                 await self.deliberate(qid)
         except asyncio.CancelledError:

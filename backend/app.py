@@ -318,6 +318,7 @@ async def pipeline_status() -> dict:
     return {
         "running": orchestrator.pipeline_running(),
         "questions": len(orchestrator.state.questions),
+        "pending": orchestrator.pending_count(),
     }
 
 
