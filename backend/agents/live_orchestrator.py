@@ -416,25 +416,31 @@ class LiveOrchestrator:
         return False
 
     async def _auto_approve(self, question: RFPQuestionState) -> None:
-        """Finalize a safe answer on the agents' behalf — no human needed."""
+        """The adversarial reviewer (the judge) clears a safe answer — no human needed.
+
+        Consensus means the judge raised no high/critical finding this round; with
+        no policy violations or risk flags either, the judge approves directly and
+        the answer skips the human gate.
+        """
         question.final_answer = question.final_answer or self._choose_final_answer(question)
         question.status = "approved"
         question.approvals.append(
             Approval(
-                approver_role="Orchestrator (auto)",
-                approver_name="BandGate Orchestrator",
+                approver_role="Adversarial Reviewer (judge)",
+                approver_name="BandGate Adversarial Reviewer",
                 decision="approved",
-                comment="Auto-approved: consensus reached, no policy violations or risk flags.",
+                comment="Approved by the adversarial reviewer: consensus reached, no findings or policy violations.",
                 timestamp=datetime.now(UTC).isoformat(),
             )
         )
+        # The judge itself posts the approval into the room.
         await self._post(
-            "orchestrator",
-            f"Auto-approved {question.question_id} — consensus, no violations, low risk. "
-            "No human review needed.",
+            "adversarial_reviewer",
+            f"Approved {question.question_id} — consensus reached, no findings or violations. "
+            "Cleared without human escalation.",
             question=question,
-            event_type="auto_approval",
-            payload={"reason": "safe", "risk_level": question.risk_level},
+            event_type="judge_approval",
+            payload={"reason": "consensus", "risk_level": question.risk_level},
         )
 
     async def _invite_human_gate(self, question: RFPQuestionState, *, second_pass: bool = False) -> None:
