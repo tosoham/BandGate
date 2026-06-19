@@ -1,0 +1,57 @@
+# Render Blueprint — BandGate backend (FastAPI in Docker).
+# The frontend deploys separately on Vercel (see docs/DEPLOY.md).
+#
+# This builds backend/Dockerfile from the repo root (the Dockerfile COPYs
+# backend/, data/, and knowledge_base/, so the context must be the repo root).
+# Secrets (API keys) are sync:false — set their values in the Render dashboard.
+services:
+  - type: web
+    name: bandgate-backend
+    runtime: docker
+    plan: free                      # free spins down after ~15 min idle; use "starter" for always-on
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- boot / provider modes ---
+      - key: BANDGATE_BOOT_MODE
+        value: lazy                 # intake only at boot — no AI/ML calls on startup
+      - key: AIML_MODE
+        value: live
+      - key: FEATHERLESS_MODE
+        value: live
+      - key: BAND_MODE
+        value: lite                 # live Band needs agent_config.yaml (not in the image); JSONL+SSE work in lite
+      - key: DEMO_MODE
+        value: live
+      - key: AIML_NORMALIZE_LIVE_LIMIT
+        value: "0"                  # skip boot-time normalize burn
+      - key: FEATHERLESS_MAX_CONCURRENCY
+        value: "1"                  # DeepSeek-V4-Pro = 4 units = full feather_pro_plus limit
+      # --- models (match .env) ---
+      - key: AIML_MODEL
+        value: google/gemini-2.5-flash
+      - key: AIML_EMBEDDING_MODEL
+        value: text-embedding-3-large
+      - key: AIML_REASONING_MODEL
+        value: google/gemini-2.5-flash
+      - key: AIML_SALES_MODEL
+        value: gpt-4o-mini
+      - key: AIML_NORMALIZE_MODEL
+        value: gpt-4o-mini
+      - key: AIML_INTAKE_RISK_MODEL
+        value: gpt-4o-mini
+      - key: AIML_DRIFT_MODEL
+        value: gpt-4o-mini
+      - key: AIML_REPORT_MODEL
+        value: gpt-4o-mini
+      - key: AIML_RERANK_MODEL
+        value: gpt-4o-mini
+      - key: FEATHERLESS_MODEL
+        value: deepseek-ai/DeepSeek-V4-Pro
+      # --- secrets: set values in the Render dashboard (Environment tab) ---
+      - key: AIML_API_KEY
+        sync: false
+      - key: FEATHERLESS_API_KEY
+        sync: false
