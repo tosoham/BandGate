@@ -1,15 +1,15 @@
 # Render Blueprint — BandGate backend (FastAPI in Docker).
 # The frontend deploys separately on Vercel (see docs/DEPLOY.md).
 #
-# This builds backend/Dockerfile from the repo root (the Dockerfile COPYs
-# backend/, data/, and knowledge_base/, so the context must be the repo root).
+# This builds the root ./Dockerfile from the repo root (it COPYs backend/, data/,
+# and knowledge_base/, so the context must be the repo root).
 # Secrets (API keys) are sync:false — set their values in the Render dashboard.
 services:
   - type: web
     name: bandgate-backend
     runtime: docker
     plan: free                      # free spins down after ~15 min idle; use "starter" for always-on
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
     autoDeploy: true

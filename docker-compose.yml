@@ -2,7 +2,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
     environment:
       AIML_API_KEY: ${AIML_API_KEY:-}
       AIML_BASE_URL: ${AIML_BASE_URL:-https://api.aimlapi.com/v1}
@@ -67,7 +67,7 @@ services:
     profiles: ["band"]
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
     environment:
       AIML_ENABLED: ${AIML_ENABLED:-true}
       AIML_MODEL: ${AIML_MODEL:-google/gemma-3-4b-it}

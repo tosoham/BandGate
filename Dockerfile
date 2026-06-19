@@ -5,6 +5,8 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Build context is the repo root (this Dockerfile lives at the root so the
+# context is unambiguous on Render and in docker-compose alike).
 COPY backend/ ./
 RUN pip install --no-cache-dir -e ".[dev,band]"
 
